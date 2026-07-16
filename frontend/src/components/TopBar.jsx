@@ -22,6 +22,7 @@ const BACK_MAP = {
   "multi-results": { type: "back", label: "Accueil", target: "home" },
   profile: { type: "back", label: "Retour", target: "home" },
   "public-profile": { type: "back", label: "Retour", target: "leaderboard" },
+  admin: { type: "back", label: "Retour", target: "profile" },
   "chill-quiz": { type: "quit" },
   "ranked-quiz": { type: "quit" },
   "mise-play": { type: "quit" },

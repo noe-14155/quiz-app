@@ -71,8 +71,14 @@ export function Profile({ screen, onNavigate }) {
     <div style={cardWrap}>
       <TopBar screen={screen} onNavigate={onNavigate} />
       <ProfileBody profile={user} />
+      {user.is_admin ? (
+        <button onClick={() => onNavigate("admin")}
+          style={{ background: "none", border: "none", color: COLORS.gold, cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, margin: "22px auto 0" }}>
+          Administration
+        </button>
+      ) : null}
       <button onClick={() => { logout(); onNavigate("home"); }}
-        style={{ background: "none", border: "none", color: COLORS.danger, cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, margin: "22px auto 0" }}>
+        style={{ background: "none", border: "none", color: COLORS.danger, cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, margin: "12px auto 0" }}>
         <LogOut size={16} /> Se déconnecter
       </button>
     </div>

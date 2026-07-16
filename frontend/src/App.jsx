@@ -11,6 +11,7 @@ import Mise from "./modes/local/games/Mise";
 import QuestionsMode from "./modes/local/games/QuestionsMode";
 import Multi from "./modes/multi/Multi";
 import { Profile, PublicProfile } from "./profile/Profile";
+import Admin from "./admin/Admin";
 
 function Router() {
   const [screen, setScreen] = useState("home");
@@ -43,6 +44,7 @@ function Router() {
 
   if (screen === "profile") return <Profile screen={screen} onNavigate={navigate} />;
   if (screen === "public-profile") return <PublicProfile screen={screen} onNavigate={navigate} pseudo={viewedPseudo} />;
+  if (screen === "admin") return <Admin screen={screen} onNavigate={navigate} />;
 
   return <Home screen="home" onNavigate={navigate} />;
 }
