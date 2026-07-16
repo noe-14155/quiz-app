@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -20,6 +22,7 @@ def get_chill_questions(themes: str, difficulte_max: int, nb: int = 10):
 class ChillAnswerPayload(BaseModel):
     question_id: int
     choice: int
+    choix: List[str]  # le tableau de réponses EXACTEMENT tel qu'affiché au joueur
 
 
 @router.post("/answer")
@@ -27,11 +30,22 @@ def submit_chill_answer(payload: ChillAnswerPayload, user=Depends(get_current_us
     question = questions_service.get_question_by_id(payload.question_id)
     if not question:
         return {"correct": False, "explication": None}
-    correct = payload.choice == question["bonne_reponse"] - 1
 
-    # Le mode chill compte pour l'XP (si connecté), mais PAS pour les stats
-    # de thème du profil — seul le mode classé alimente ces stats-là.
+    # /questions et /answer mélangent chacun indépendamment les réponses, donc
+    # la position vue par le joueur ne correspond pas à celle relue ici. On
+    # retrouve la bonne réponse par son TEXTE, puis on renvoie son index tel
+    # qu'il apparaît dans le tableau du CLIENT (payload.choix) — jamais dans
+    # un tableau recalculé côté serveur — pour garantir que l'affichage colore
+    # exactement le bon bouton, sans recherche approximative côté navigateur.
+    correct_text = question["choix"][question["bonne_reponse"] - 1]
+    correct = payload.choix[payload.choice] == correct_text
+    correct_index_in_client_array = payload.choix.index(correct_text) if correct_text in payload.choix else None
+
     if user and correct:
         award_xp(user["id"], xp_for_difficulty(question["difficulte"]))
 
-    return {"correct": correct, "explication": question["explication"], "bonne_reponse": question["bonne_reponse"]}
+    return {
+        "correct": correct,
+        "explication": question["explication"],
+        "correct_index": correct_index_in_client_array,
+    }
