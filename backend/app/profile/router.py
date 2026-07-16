@@ -20,7 +20,7 @@ def _build_profile(user: dict):
 
 @router.get("/me")
 def my_profile(user=Depends(get_current_user)):
-    return _build_profile(user)
+    return {**_build_profile(user), "is_admin": bool(user["is_admin"])}
 
 
 @router.get("/{pseudo}")
