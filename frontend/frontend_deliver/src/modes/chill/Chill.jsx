@@ -58,7 +58,7 @@ export default function Chill({ screen, onNavigate }) {
     try {
       const result = await apiFetch("/api/chill/answer", {
         method: "POST",
-        body: JSON.stringify({ question_id: q.id, choice: choiceIdx, answer_text: q.choix[choiceIdx] }),
+        body: JSON.stringify({ question_id: q.id, choice: choiceIdx, choix: q.choix }),
       });
       setReveal(result);
       if (result.correct) setScore((s) => s + 1);
@@ -144,7 +144,7 @@ export default function Chill({ screen, onNavigate }) {
         <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
         <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, margin: "0 0 20px" }}>{q.question}</h3>
 
-        <AnswerGrid choix={q.choix} answered={answered} correctIndex={reveal ? q.choix.indexOf(reveal.bonne_reponse_text) : null} onPick={pick} revealCorrectness={reveal !== null} />
+        <AnswerGrid choix={q.choix} answered={answered} correctIndex={reveal ? reveal.correct_index : null} onPick={pick} revealCorrectness={reveal !== null} />
 
         {reveal && (
           <>

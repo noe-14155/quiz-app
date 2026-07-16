@@ -1,14 +1,33 @@
 RANKS = ["Fer", "Bronze", "Argent", "Or", "Diamant", "Légende"]
 PALIER_LABELS = ["III", "II", "I"]
 MAX_TIER = len(RANKS) * 3 - 1  # 17
+POINTS_PER_TIER = 100
 
 GAIN_CORRECT = 12
 LOSS_PASS = 3
 NB_QUESTIONS_PER_PARTY = 10
 
 
-def tier_info(tier: int):
-    return {"rank": RANKS[tier // 3], "palier": PALIER_LABELS[tier % 3]}
+def tier_from_points(rank_points: int) -> int:
+    """Le rang se déduit directement du cumul de points — un seul nombre fait
+    à la fois foi pour le badge affiché ET pour comparer deux joueurs entre
+    eux (ex: 550 points > 480 points, sans ambiguïté de palier)."""
+    return min(MAX_TIER, rank_points // POINTS_PER_TIER)
+
+
+def progress_in_tier(rank_points: int) -> int:
+    """Progression (0 à 99) vers le palier suivant, pour la barre affichée."""
+    tier = tier_from_points(rank_points)
+    if tier >= MAX_TIER:
+        # Au rang maximum, on ne peut plus monter de palier : on affiche une
+        # barre pleine, mais le cumul continue lui de grimper pour la comparaison.
+        return 99
+    return rank_points % POINTS_PER_TIER
+
+
+def tier_info(rank_points: int):
+    tier = tier_from_points(rank_points)
+    return {"rank": RANKS[tier // 3], "palier": PALIER_LABELS[tier % 3], "tier": tier}
 
 
 def weights_for_tier(tier: int):
@@ -25,15 +44,8 @@ def loss_for_tier(tier: int) -> int:
     return 6 + round((tier / MAX_TIER) * 14)
 
 
-def apply_delta(tier: int, points: int, delta: int):
-    """Applique un delta de points et gère la promotion/rétrogradation de palier."""
-    new_points = points + delta
-    new_tier = tier
-    while new_points >= 100 and new_tier < MAX_TIER:
-        new_points -= 100
-        new_tier += 1
-    while new_points < 0 and new_tier > 0:
-        new_points += 100
-        new_tier -= 1
-    new_points = max(0, min(99, new_points))
-    return new_tier, new_points
+def apply_delta(rank_points: int, delta: int) -> int:
+    """Applique un delta au cumul de points, jamais négatif. Plus besoin de
+    gérer la promotion/rétrogradation à la main : le rang se déduit toujours
+    du cumul via tier_from_points()."""
+    return max(0, rank_points + delta)

@@ -10,6 +10,7 @@ from app.modes.ranked.router import router as ranked_router
 from app.modes.local.router import router as local_router
 from app.modes.multi.router import router as multi_router
 from app.modes.admin.router import router as admin_router
+from app.modes.admin import service as admin_service
 from app.profile.router import router as profile_router
 
 app = FastAPI(title="Quiz API")
@@ -33,6 +34,13 @@ def on_startup():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/modes/status")
+def modes_status():
+    """Accessible sans compte : le frontend en a besoin pour tout le monde,
+    pour griser les modes désactivés dès l'écran d'accueil."""
+    return admin_service.get_modes_status()
 
 
 # Un mode = un routeur = une ligne ici. Ajouter un mode ne touche à aucun

@@ -55,3 +55,25 @@ def update_settings(patch: dict, admin=Depends(get_current_admin)):
 @router.get("/stats")
 def get_stats(admin=Depends(get_current_admin)):
     return service.get_stats()
+
+
+@router.get("/modes-status")
+def modes_status():
+    """Public, sans authentification : le frontend l'utilise pour griser les
+    modes désactivés dès l'écran d'accueil, avant même de se connecter."""
+    return service.get_modes_status()
+
+
+@router.patch("/modes-status")
+def update_modes_status(patch: dict, admin=Depends(get_current_admin)):
+    """patch attendu : {"mode_chill_enabled": true/false, ...}"""
+    converted = {k: ("1" if v else "0") for k, v in patch.items() if k in service.MODE_KEYS}
+    service.update_settings(converted)
+    return service.get_modes_status()
+
+
+@router.get("/modes-toggle")
+def modes_toggle(admin=Depends(get_current_admin)):
+    """Alias pratique pour la page admin : les 4 interrupteurs, sans avoir à
+    fouiller dans l'ensemble des réglages."""
+    return service.get_modes_status()

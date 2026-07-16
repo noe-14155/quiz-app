@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.modes.multi import lobby, sync
+from app.modes.admin.service import is_mode_enabled
 
 router = APIRouter(prefix="/api/multi", tags=["multi"])
 
@@ -29,6 +30,8 @@ class AnswerPayload(BaseModel):
 
 @router.post("/create")
 def create_room(payload: CreateRoomPayload):
+    if not is_mode_enabled("mode_multi_enabled"):
+        raise HTTPException(status_code=403, detail="Le mode multi est temporairement désactivé")
     return {"code": lobby.create_room(payload.host_name)}
 
 

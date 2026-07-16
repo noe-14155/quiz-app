@@ -11,6 +11,7 @@ from app.core.db import get_connection
 from app.questions import service as questions_service
 from app.modes.ranked import rank_config
 from app.profile.xp import xp_for_difficulty, award_xp
+from app.modes.admin.service import is_mode_enabled
 
 router = APIRouter(prefix="/api/ranked", tags=["ranked"])
 
@@ -42,7 +43,10 @@ def _pick_weighted_questions(tier: int, nb: int):
 
 @router.post("/start")
 def start_party(user=Depends(get_current_user)):
-    picked = _pick_weighted_questions(user["rank_tier"], rank_config.NB_QUESTIONS_PER_PARTY)
+    if not is_mode_enabled("mode_ranked_enabled"):
+        raise HTTPException(status_code=403, detail="Le mode classé est temporairement désactivé")
+    tier = rank_config.tier_from_points(user["rank_points"])
+    picked = _pick_weighted_questions(tier, rank_config.NB_QUESTIONS_PER_PARTY)
 
     conn = get_connection()
     cur = conn.cursor()
@@ -59,7 +63,7 @@ def start_party(user=Depends(get_current_user)):
         "party_id": party_id,
         "questions": public_questions,
         "gain_if_correct": rank_config.GAIN_CORRECT,
-        "loss_if_wrong": rank_config.loss_for_tier(user["rank_tier"]),
+        "loss_if_wrong": rank_config.loss_for_tier(tier),
         "loss_if_pass": rank_config.LOSS_PASS,
     }
 
@@ -86,7 +90,7 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         conn.close()
         raise HTTPException(status_code=404, detail="Question introuvable dans cette partie")
 
-    tier = user["rank_tier"]
+    tier = rank_config.tier_from_points(user["rank_points"])
     if payload.choice is None:
         delta, result, correct = -rank_config.LOSS_PASS, "passee", False
     else:
@@ -94,10 +98,11 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         delta = rank_config.GAIN_CORRECT if correct else -rank_config.loss_for_tier(tier)
         result = "bonne" if correct else "mauvaise"
 
-    new_tier, new_points = rank_config.apply_delta(tier, user["rank_points"], delta)
+    new_rank_points = rank_config.apply_delta(user["rank_points"], delta)
+    new_tier = rank_config.tier_from_points(new_rank_points)
     now = datetime.now(timezone.utc).isoformat()
 
-    conn.execute("UPDATE users SET rank_tier = ?, rank_points = ? WHERE id = ?", (new_tier, new_points, user["id"]))
+    conn.execute("UPDATE users SET rank_tier = ?, rank_points = ? WHERE id = ?", (new_tier, new_rank_points, user["id"]))
     conn.execute(
         "INSERT INTO question_results (user_id, question_id, result, updated_at) VALUES (?,?,?,?) "
         "ON CONFLICT(user_id, question_id) DO UPDATE SET result = excluded.result, updated_at = excluded.updated_at",
@@ -115,16 +120,24 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         "bonne_reponse": question["bonne_reponse"],
         "explication": question["explication"],
         "new_tier": new_tier,
-        "new_points": new_points,
+        "new_rank_points": new_rank_points,
+        "new_progress": rank_config.progress_in_tier(new_rank_points),
     }
 
 
 @router.get("/leaderboard")
 def leaderboard(limit: int = 20):
+    """Le tri se fait directement sur le cumul de points — un seul critère,
+    sans ambiguïté de palier entre deux joueurs proches."""
     conn = get_connection()
     rows = conn.execute(
-        "SELECT pseudo, rank_tier, rank_points FROM users ORDER BY rank_tier DESC, rank_points DESC LIMIT ?",
+        "SELECT pseudo, rank_points FROM users ORDER BY rank_points DESC LIMIT ?",
         (limit,),
     ).fetchall()
     conn.close()
-    return {"leaderboard": [dict(r) for r in rows]}
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["rank_tier"] = rank_config.tier_from_points(d["rank_points"])
+        result.append(d)
+    return {"leaderboard": result}

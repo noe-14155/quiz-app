@@ -10,7 +10,25 @@ DEFAULT_SETTINGS = {
     "ranked_time_per_question": "15",
     "multi_time_per_question": "15",
     "multi_reveal_seconds": "5",
+    "mode_chill_enabled": "1",
+    "mode_ranked_enabled": "1",
+    "mode_local_enabled": "1",
+    "mode_multi_enabled": "1",
 }
+
+MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_multi_enabled"]
+
+
+def is_mode_enabled(mode_key: str) -> bool:
+    """Utilisée par chaque mode pour vérifier s'il a été désactivé par un admin
+    (en plus du frontend qui grise les cartes, pour une vraie protection côté serveur)."""
+    settings = get_settings()
+    return settings.get(mode_key, "1") == "1"
+
+
+def get_modes_status():
+    settings = get_settings()
+    return {key: settings.get(key, "1") == "1" for key in MODE_KEYS}
 
 
 def bootstrap_admin(pseudo: str, secret: str):
