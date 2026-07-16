@@ -29,7 +29,7 @@ def submit_chill_answer(payload: ChillAnswerPayload, user=Depends(get_current_us
     question = questions_service.get_question_by_id(payload.question_id)
     if not question:
         return {"correct": False, "explication": None}
-    correct = payload.choice == question["bonne_reponse"]
+    correct = payload.choice == question["bonne_reponse"] - 1
 
     # Le mode chill est jouable sans compte : on n'enregistre les stats que si connecté.
     if user:

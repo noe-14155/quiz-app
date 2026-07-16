@@ -26,8 +26,8 @@ def start_game(code: str):
     players = json.loads(room["players"])
 
     conn.execute(
-        "UPDATE multi_rooms SET status='playing', phase='answering', question_ids=?, current_index=0, question_started_at=? WHERE code=?",
-        (json.dumps(question_ids), datetime.now(timezone.utc).isoformat(), code),
+        "UPDATE multi_rooms SET status='playing', phase='answering', question_ids=?, questions_data=?, current_index=0, question_started_at=? WHERE code=?",
+        (json.dumps(question_ids), json.dumps(candidates), datetime.now(timezone.utc).isoformat(), code),
     )
     for p in players:
         conn.execute(
@@ -91,9 +91,9 @@ def get_state(code: str):
 
     current_question = None
     if room["status"] in ("playing", "finished") and question_ids and room["current_index"] < len(question_ids):
-        qid = question_ids[room["current_index"]]
-        current_question = questions_service.get_question_by_id(qid)
-        if room["phase"] == "answering":
+        all_questions = json.loads(room["questions_data"]) if room.get("questions_data") else []
+        current_question = all_questions[room["current_index"]] if room["current_index"] < len(all_questions) else None
+        if current_question and room["phase"] == "answering":
             current_question = {k: v for k, v in current_question.items() if k not in ("bonne_reponse", "explication")}
 
     conn = get_connection()
@@ -121,14 +121,14 @@ def _maybe_advance(code, room, answers, question_ids):
 
 def _resolve_round(code, room, answers, question_ids):
     conn = get_connection()
-    qid = question_ids[room["current_index"]]
-    question = questions_service.get_question_by_id(qid)
+    all_questions = json.loads(room["questions_data"]) if room.get("questions_data") else []
+    question = all_questions[room["current_index"]]
     started = datetime.fromisoformat(room["question_started_at"])
 
     for player in room["players"]:
         a = answers.get(player)
         points = 0
-        if a and a["choice"] == question["bonne_reponse"]:
+        if a and a["choice"] == question["bonne_reponse"] - 1:
             answered_at = datetime.fromisoformat(a["answered_at"])
             elapsed = max(0, min(TIME_PER_QUESTION, (answered_at - started).total_seconds()))
             bonus = SPEED_BONUS_MAX * (1 - elapsed / TIME_PER_QUESTION)

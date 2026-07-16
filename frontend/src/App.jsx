@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { ThemeSettingsProvider, useThemeSettings } from "./design/ThemeContext";
 import Home from "./Home";
 import Login from "./Login";
 import Chill from "./modes/chill/Chill";
@@ -48,8 +49,17 @@ function Router() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router />
-    </AuthProvider>
+    <ThemeSettingsProvider>
+      <AuthProvider>
+        <RouterWithThemeKey />
+      </AuthProvider>
+    </ThemeSettingsProvider>
   );
+}
+
+// La clé basée sur "version" force React à tout redémonter après un
+// changement de thème, pour que chaque style inline relise la couleur à jour.
+function RouterWithThemeKey() {
+  const { version } = useThemeSettings();
+  return <Router key={version} />;
 }

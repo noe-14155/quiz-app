@@ -1,6 +1,8 @@
 import { LogIn, Home as HomeIcon, ArrowLeft, X } from "lucide-react";
+import { useState } from "react";
 import { COLORS, FONT_BODY } from "../design/theme";
 import { useAuth } from "../auth/AuthContext";
+import SettingsPanel, { SettingsButton } from "../design/Settings";
 
 const BACK_MAP = {
   login: { type: "back", label: "Retour", target: "home" },
@@ -31,9 +33,11 @@ const BACK_MAP = {
 export default function TopBar({ screen, onNavigate, onRequestQuit }) {
   const { user } = useAuth();
   const back = BACK_MAP[screen];
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       <button
         onClick={() => onNavigate(user ? "profile" : "login")}
         style={{
@@ -58,22 +62,25 @@ export default function TopBar({ screen, onNavigate, onRequestQuit }) {
         )}
       </button>
 
-      {back?.type === "back" && (
-        <button
-          onClick={() => onNavigate(back.target)}
-          style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_BODY, fontWeight: 700, fontSize: 13 }}
-        >
-          {back.label === "Accueil" ? <HomeIcon size={16} /> : <ArrowLeft size={16} />} {back.label}
-        </button>
-      )}
-      {back?.type === "quit" && (
-        <button
-          onClick={onRequestQuit}
-          style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_BODY, fontWeight: 700, fontSize: 13 }}
-        >
-          <X size={16} /> Quitter
-        </button>
-      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        {back?.type === "back" && (
+          <button
+            onClick={() => onNavigate(back.target)}
+            style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_BODY, fontWeight: 700, fontSize: 13 }}
+          >
+            {back.label === "Accueil" ? <HomeIcon size={16} /> : <ArrowLeft size={16} />} {back.label}
+          </button>
+        )}
+        {back?.type === "quit" && (
+          <button
+            onClick={onRequestQuit}
+            style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_BODY, fontWeight: 700, fontSize: 13 }}
+          >
+            <X size={16} /> Quitter
+          </button>
+        )}
+        <SettingsButton onClick={() => setSettingsOpen(true)} />
+      </div>
     </div>
   );
 }

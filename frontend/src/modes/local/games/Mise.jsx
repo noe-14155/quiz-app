@@ -4,6 +4,7 @@ import { cardWrap, COLORS, FONT_DISPLAY } from "../../../design/theme";
 import TopBar from "../../../components/TopBar";
 import Button from "../../../components/Button";
 import AnswerGrid from "../../../components/AnswerGrid";
+import QuitConfirmModal from "../../../components/QuitConfirmModal";
 import { apiFetch } from "../../../api/client";
 
 const THEMES = [
@@ -32,6 +33,7 @@ export default function Mise({ screen, onNavigate }) {
   const [answered, setAnswered] = useState(null);
   const [usedIds, setUsedIds] = useState([]);
   const [error, setError] = useState(null);
+  const [quitOpen, setQuitOpen] = useState(false);
 
   function addPlayer() {
     const name = nameInput.trim();
@@ -107,6 +109,12 @@ export default function Mise({ screen, onNavigate }) {
     }
   }
 
+  function leaveToHome() {
+    setQuitOpen(false);
+    setPhase("setup");
+    onNavigate("home");
+  }
+
   async function nextStep() {
     const step = questionStep + 1;
     if (step >= bidOrder.length) {
@@ -172,7 +180,8 @@ export default function Mise({ screen, onNavigate }) {
     const taken = new Set(Object.values(bids));
     return (
       <div style={cardWrap}>
-        <TopBar screen="mise-play" onNavigate={onNavigate} />
+        {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveToHome} />}
+        <TopBar screen="mise-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
         <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Manche {round} · Objectif {target} pts</span>
         {scoreboard}
         <p style={{ fontSize: 15, color: COLORS.gold, fontWeight: 700, margin: "12px 0 4px", textTransform: "uppercase" }}>{theme}</p>
@@ -197,10 +206,17 @@ export default function Mise({ screen, onNavigate }) {
     const playerIndex = bidOrder[questionStep];
     const player = players[playerIndex];
     const bid = bids[playerIndex];
-    if (!currentQuestion) return <div style={cardWrap}><TopBar screen="mise-play" onNavigate={onNavigate} /><p>Chargement...</p></div>;
+    if (!currentQuestion) return (
+      <div style={cardWrap}>
+        {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveToHome} />}
+        <TopBar screen="mise-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
+        <p>Chargement...</p>
+      </div>
+    );
     return (
       <div style={cardWrap}>
-        <TopBar screen="mise-play" onNavigate={onNavigate} />
+        {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveToHome} />}
+        <TopBar screen="mise-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
         {scoreboard}
         <p style={{ fontSize: 15, color: COLORS.gold, fontWeight: 700, margin: "0 0 4px", textTransform: "uppercase" }}>{currentQuestion.theme}</p>
         <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 16px" }}>{player.name}</h2>

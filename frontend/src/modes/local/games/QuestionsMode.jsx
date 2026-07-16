@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cardWrap, COLORS, FONT_DISPLAY } from "../../../design/theme";
 import TopBar from "../../../components/TopBar";
 import Button from "../../../components/Button";
+import QuitConfirmModal from "../../../components/QuitConfirmModal";
 import { Check } from "lucide-react";
 import { apiFetch } from "../../../api/client";
 
@@ -24,6 +25,7 @@ export default function QuestionsMode({ screen, onNavigate }) {
   const [correctIds, setCorrectIds] = useState(new Set());
   const [usedIds, setUsedIds] = useState([]);
   const [error, setError] = useState(null);
+  const [quitOpen, setQuitOpen] = useState(false);
 
   function addPlayer() {
     const name = nameInput.trim();
@@ -33,6 +35,12 @@ export default function QuestionsMode({ screen, onNavigate }) {
   }
   function removePlayer(i) { setPlayers((p) => p.filter((_, idx) => idx !== i)); }
   function toggleTheme(t) { setThemes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])); }
+
+  function leaveToHome() {
+    setQuitOpen(false);
+    setPhase("setup");
+    onNavigate("home");
+  }
 
   function start() {
     if (players.length < 2 || themes.length === 0) return;
@@ -141,7 +149,8 @@ export default function QuestionsMode({ screen, onNavigate }) {
   if (phase === "play") {
     return (
       <div style={cardWrap}>
-        <TopBar screen="questions-mode-play" onNavigate={onNavigate} />
+        {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveToHome} />}
+        <TopBar screen="questions-mode-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
         <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Question {round}</span>
         {scoreboard}
         {!question && <Button onClick={draw} style={{ width: "100%" }}>Poser la question</Button>}

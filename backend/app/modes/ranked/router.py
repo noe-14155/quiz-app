@@ -89,7 +89,7 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
     if payload.choice is None:
         delta, result, correct = -rank_config.LOSS_PASS, "passee", False
     else:
-        correct = payload.choice == question["bonne_reponse"]
+        correct = payload.choice == question["bonne_reponse"] - 1
         delta = rank_config.GAIN_CORRECT if correct else -rank_config.loss_for_tier(tier)
         result = "bonne" if correct else "mauvaise"
 

@@ -65,6 +65,7 @@ def init_schema():
             status TEXT NOT NULL DEFAULT 'lobby',
             phase TEXT NOT NULL DEFAULT 'answering',
             question_ids TEXT,
+            questions_data TEXT,
             current_index INTEGER NOT NULL DEFAULT 0,
             question_started_at TEXT,
             reveal_started_at TEXT,
