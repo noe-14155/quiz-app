@@ -9,6 +9,7 @@ from app.modes.chill.router import router as chill_router
 from app.modes.ranked.router import router as ranked_router
 from app.modes.local.router import router as local_router
 from app.modes.multi.router import router as multi_router
+from app.modes.admin.router import router as admin_router
 from app.profile.router import router as profile_router
 
 app = FastAPI(title="Quiz API")
@@ -42,4 +43,5 @@ app.include_router(chill_router)
 app.include_router(ranked_router)
 app.include_router(local_router)
 app.include_router(multi_router)
+app.include_router(admin_router)
 app.include_router(profile_router)

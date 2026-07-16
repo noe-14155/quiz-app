@@ -28,7 +28,13 @@ def init_schema():
             xp_total INTEGER NOT NULL DEFAULT 0,
             rank_tier INTEGER NOT NULL DEFAULT 0,
             rank_points INTEGER NOT NULL DEFAULT 0,
+            is_admin INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS sessions (
@@ -93,4 +99,14 @@ def init_schema():
         );
     """)
     conn.commit()
+
+    # Migration : les bases créées avant l'ajout du module admin n'ont pas
+    # encore la colonne is_admin sur une table users déjà existante.
+    # CREATE TABLE IF NOT EXISTS ne l'ajoute pas automatiquement, donc on
+    # vérifie et on l'ajoute nous-mêmes si besoin.
+    existing_columns = [row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "is_admin" not in existing_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+
     conn.close()

@@ -8,3 +8,8 @@ DB_PATH = os.path.join(DATA_DIR, "quiz.db")
 # soit en place. Une mise à jour des questions demande alors de repasser par
 # GitHub + "Pull and redeploy" plutôt qu'un simple redémarrage du conteneur.
 CSV_PATH = os.environ.get("CSV_PATH", "/app/seed_data/questions.csv")
+
+# Secret à usage unique pour promouvoir le tout premier compte admin
+# (voir modes/admin/router.py, endpoint /api/admin/bootstrap).
+# Change cette valeur par défaut dans .env / les variables Portainer.
+ADMIN_BOOTSTRAP_SECRET = os.environ.get("ADMIN_BOOTSTRAP_SECRET", "change-moi")

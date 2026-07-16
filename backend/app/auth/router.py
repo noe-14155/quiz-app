@@ -51,3 +51,11 @@ def get_current_user_optional(authorization: Optional[str] = Header(None)):
         return None
     token = authorization.removeprefix("Bearer ")
     return service.get_user_from_token(token)
+
+
+def get_current_admin(authorization: Optional[str] = Header(None)):
+    """Comme get_current_user, mais exige en plus que le compte soit admin (403 sinon)."""
+    user = get_current_user(authorization)
+    if not user["is_admin"]:
+        raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
+    return user
