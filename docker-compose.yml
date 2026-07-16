@@ -1,0 +1,17 @@
+services:
+  quiz-api:
+    build: ./backend
+    container_name: quiz-api
+    restart: unless-stopped
+    ports:
+      # Phase de test (accès direct via http://TON_IP:${EXTERNAL_PORT}) :
+      - "${EXTERNAL_PORT}:8000"
+      # Une fois nginx configuré en reverse proxy devant, remplace la ligne
+      # ci-dessus par celle-ci pour n'autoriser que le trafic local :
+      # - "127.0.0.1:${EXTERNAL_PORT}:8000"
+    volumes:
+      # Chemin défini dans .env (ou dans les variables d'environnement du
+      # stack Portainer) — jamais codé en dur ici.
+      - ${DATA_DIR}:/app/data
+    environment:
+      - DATA_DIR=/app/data
