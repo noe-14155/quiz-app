@@ -28,7 +28,12 @@ def get_room(code: str):
     conn = get_connection()
     row = conn.execute("SELECT * FROM multi_rooms WHERE code = ?", (code,)).fetchone()
     conn.close()
-    return dict(row) if row else None
+    if not row:
+        return None
+    room = dict(row)
+    room["players"] = json.loads(room["players"])
+    room["themes"] = json.loads(room["themes"])
+    return room
 
 
 def join_room(code: str, player_name: str):
