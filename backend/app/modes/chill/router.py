@@ -1,11 +1,9 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.auth.router import get_current_user_optional
-from app.core.db import get_connection
 from app.questions import service as questions_service
+from app.profile.xp import xp_for_difficulty, award_xp
 
 router = APIRouter(prefix="/api/chill", tags=["chill"])
 
@@ -31,15 +29,9 @@ def submit_chill_answer(payload: ChillAnswerPayload, user=Depends(get_current_us
         return {"correct": False, "explication": None}
     correct = payload.choice == question["bonne_reponse"] - 1
 
-    # Le mode chill est jouable sans compte : on n'enregistre les stats que si connecté.
-    if user:
-        conn = get_connection()
-        conn.execute(
-            "INSERT INTO question_results (user_id, question_id, result, updated_at) VALUES (?,?,?,?) "
-            "ON CONFLICT(user_id, question_id) DO UPDATE SET result = excluded.result, updated_at = excluded.updated_at",
-            (user["id"], payload.question_id, "bonne" if correct else "mauvaise", datetime.now(timezone.utc).isoformat()),
-        )
-        conn.commit()
-        conn.close()
+    # Le mode chill compte pour l'XP (si connecté), mais PAS pour les stats
+    # de thème du profil — seul le mode classé alimente ces stats-là.
+    if user and correct:
+        award_xp(user["id"], xp_for_difficulty(question["difficulte"]))
 
     return {"correct": correct, "explication": question["explication"], "bonne_reponse": question["bonne_reponse"]}

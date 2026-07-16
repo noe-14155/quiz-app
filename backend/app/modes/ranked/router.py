@@ -10,6 +10,7 @@ from app.auth.router import get_current_user
 from app.core.db import get_connection
 from app.questions import service as questions_service
 from app.modes.ranked import rank_config
+from app.profile.xp import xp_for_difficulty, award_xp
 
 router = APIRouter(prefix="/api/ranked", tags=["ranked"])
 
@@ -104,6 +105,9 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
     )
     conn.commit()
     conn.close()
+
+    if correct:
+        award_xp(user["id"], xp_for_difficulty(question["difficulte"]))
 
     return {
         "correct": correct,

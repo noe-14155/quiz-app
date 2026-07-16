@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from app.core.db import get_connection
 from app.questions import service as questions_service
+from app.profile.xp import xp_for_difficulty, award_xp_by_pseudo
 
 TIME_PER_QUESTION = 15
 ROUND_REVEAL_SECONDS = 5
@@ -133,6 +134,9 @@ def _resolve_round(code, room, answers, question_ids):
             elapsed = max(0, min(TIME_PER_QUESTION, (answered_at - started).total_seconds()))
             bonus = SPEED_BONUS_MAX * (1 - elapsed / TIME_PER_QUESTION)
             points = round(BASE_POINTS + bonus)
+            # Attribue de l'XP si ce nom de joueur correspond à un vrai compte
+            # (le multi n'exige pas d'être connecté, donc ce n'est pas toujours le cas).
+            award_xp_by_pseudo(player, xp_for_difficulty(question["difficulte"]))
         conn.execute(
             "UPDATE multi_scores SET score = score + ? WHERE room_code = ? AND player_name = ?",
             (points, code, player),
