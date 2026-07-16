@@ -109,4 +109,13 @@ def init_schema():
         conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
         conn.commit()
 
+    # Migration : même chose pour questions_data sur multi_rooms, ajoutée
+    # après coup pour corriger le mélange non persistant des questions en
+    # multi. Sans cette migration, /api/multi/{code}/start échoue avec une
+    # erreur 500 ("no such column: questions_data") sur une base existante.
+    existing_room_columns = [row["name"] for row in conn.execute("PRAGMA table_info(multi_rooms)").fetchall()]
+    if "questions_data" not in existing_room_columns:
+        conn.execute("ALTER TABLE multi_rooms ADD COLUMN questions_data TEXT")
+        conn.commit()
+
     conn.close()
