@@ -155,7 +155,7 @@ export default function Ranked({ screen, onNavigate }) {
         <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
         <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, margin: "0 0 20px" }}>{q.question}</h3>
 
-        <AnswerGrid choix={q.choix} answered={answered === -1 ? -1 : answered} correctIndex={reveal ? reveal.bonne_reponse - 1 : null} onPick={answerQuestion} />
+        <AnswerGrid choix={q.choix} answered={answered === -1 ? -1 : answered} correctIndex={reveal ? reveal.bonne_reponse - 1 : null} onPick={answerQuestion} revealCorrectness={reveal !== null} />
 
         {answered === null && (
           <button onClick={pass} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: COLORS.muted, cursor: "pointer", fontWeight: 700, fontSize: 13, margin: "8px auto 0" }}>

@@ -144,7 +144,7 @@ export default function Chill({ screen, onNavigate }) {
         <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
         <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, margin: "0 0 20px" }}>{q.question}</h3>
 
-        <AnswerGrid choix={q.choix} answered={answered} correctIndex={reveal ? reveal.bonne_reponse - 1 : null} onPick={pick} />
+        <AnswerGrid choix={q.choix} answered={answered} correctIndex={reveal ? reveal.bonne_reponse - 1 : null} onPick={pick} revealCorrectness={reveal !== null} />
 
         {reveal && (
           <>

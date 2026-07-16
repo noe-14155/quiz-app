@@ -31,6 +31,13 @@ export default function Multi({ screen, onNavigate }) {
     if (user) setName(user.pseudo);
   }, [user]);
 
+  // Le bouton "Retour" de TopBar met à jour le "screen" du parent sans
+  // toucher à l'état interne "step" — cette synchronisation évite de rester
+  // bloqué sur l'écran héberger/rejoindre après un clic sur "Retour".
+  useEffect(() => {
+    if (screen === "multi-choice") setStep("choice");
+  }, [screen]);
+
   // ---------- lobby polling ----------
   useEffect(() => {
     if (step !== "lobby" || !code) return;
@@ -139,7 +146,7 @@ export default function Multi({ screen, onNavigate }) {
   }
 
   // ---------- CHOICE ----------
-  if (step === "choice" || screen === "multi-choice") {
+  if (step === "choice") {
     return (
       <div style={cardWrap}>
         <TopBar screen="multi-choice" onNavigate={onNavigate} />
