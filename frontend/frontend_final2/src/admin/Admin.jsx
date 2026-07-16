@@ -1,0 +1,201 @@
+import { useEffect, useState } from "react";
+import { Trash2, RotateCcw } from "lucide-react";
+import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY } from "../design/theme";
+import TopBar from "../components/TopBar";
+import Button from "../components/Button";
+import { apiFetch } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
+
+const SETTINGS_LABELS = {
+  ranked_gain_correct: "Classé — points gagnés (bonne réponse)",
+  ranked_loss_pass: "Classé — coût de passer une question",
+  ranked_time_per_question: "Classé — durée par question (s)",
+  multi_time_per_question: "Multi — durée par question (s)",
+  multi_reveal_seconds: "Multi — durée de la révélation (s)",
+};
+
+const MODE_LABELS = {
+  mode_chill_enabled: "Mode Chill",
+  mode_ranked_enabled: "Mode Classé",
+  mode_local_enabled: "Mode Local",
+  mode_multi_enabled: "Mode Multi",
+};
+
+export default function Admin({ screen, onNavigate }) {
+  const { user } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  async function loadAll() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [u, s, st] = await Promise.all([
+        apiFetch("/api/admin/users"),
+        apiFetch("/api/admin/settings"),
+        apiFetch("/api/admin/stats"),
+      ]);
+      setUsers(u.users);
+      setTotal(u.total);
+      setSettings(s);
+      setStats(st);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function resetUser(id) {
+    if (!window.confirm("Remettre le score et le rang de ce joueur à zéro ?")) return;
+    await apiFetch(`/api/admin/users/${id}/reset`, { method: "POST" });
+    loadAll();
+  }
+
+  async function deleteUser(id) {
+    if (!window.confirm("Supprimer définitivement ce compte ? Cette action est irréversible.")) return;
+    await apiFetch(`/api/admin/users/${id}`, { method: "DELETE" });
+    loadAll();
+  }
+
+  function updateSettingField(key, value) {
+    setSettings((s) => ({ ...s, [key]: value }));
+  }
+
+  async function toggleMode(key) {
+    const newValue = settings[key] === "1" ? "0" : "1";
+    const updated = await apiFetch("/api/admin/settings", { method: "PATCH", body: JSON.stringify({ [key]: newValue }) });
+    setSettings(updated);
+  }
+
+  async function saveSettings() {
+    try {
+      const updated = await apiFetch("/api/admin/settings", { method: "PATCH", body: JSON.stringify(settings) });
+      setSettings(updated);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  if (!user || !user.is_admin) {
+    return (
+      <div style={cardWrap}>
+        <TopBar screen={screen} onNavigate={onNavigate} />
+        <p style={{ color: COLORS.danger, fontSize: 14 }}>Réservé aux administrateurs.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={cardWrap}>
+      <TopBar screen={screen} onNavigate={onNavigate} />
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>Administration</h2>
+
+      {loading && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement...</p>}
+      {error && <p style={{ color: COLORS.danger, fontSize: 13, marginBottom: 16 }}>{error}</p>}
+
+      {stats && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
+          <div style={{ background: COLORS.card, borderRadius: 12, padding: "10px 16px", flex: 1, minWidth: 120 }}>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: FONT_DISPLAY }}>{stats.nb_comptes}</p>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>Comptes</p>
+          </div>
+          <div style={{ background: COLORS.card, borderRadius: 12, padding: "10px 16px", flex: 1, minWidth: 120 }}>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: FONT_DISPLAY }}>{stats.nb_parties_classees}</p>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>Parties classées</p>
+          </div>
+          <div style={{ background: COLORS.card, borderRadius: 12, padding: "10px 16px", flex: 1, minWidth: 120 }}>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: FONT_DISPLAY }}>{stats.nb_parties_multi}</p>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>Parties multi</p>
+          </div>
+        </div>
+      )}
+
+      <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        Joueurs ({total})
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 28 }}>
+        {users.map((u) => (
+          <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "10px 14px" }}>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>
+                {u.pseudo} {u.is_admin ? <span style={{ color: COLORS.gold, fontSize: 11 }}>(admin)</span> : null}
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>
+                Tier {u.rank_tier} · {u.rank_points} pts · {u.xp_total} XP
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => resetUser(u.id)} aria-label="Réinitialiser" style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", padding: 6 }}>
+                <RotateCcw size={16} />
+              </button>
+              <button onClick={() => deleteUser(u.id)} aria-label="Supprimer" style={{ background: "none", border: "none", color: COLORS.danger, cursor: "pointer", padding: 6 }}>
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        Modes de jeu
+      </p>
+      {settings && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+          {Object.keys(MODE_LABELS).map((key) => {
+            const enabled = settings[key] === "1";
+            return (
+              <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "10px 16px" }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>{MODE_LABELS[key]}</span>
+                <button
+                  onClick={() => toggleMode(key)}
+                  style={{
+                    width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", position: "relative",
+                    background: enabled ? COLORS.success : COLORS.cardAlt, transition: "background 0.2s",
+                  }}
+                >
+                  <span style={{
+                    position: "absolute", top: 3, left: enabled ? 23 : 3, width: 18, height: 18, borderRadius: "50%",
+                    background: "#fff", transition: "left 0.2s",
+                  }} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {settings && (
+        <>
+          <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Réglages globaux
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+            {Object.keys(settings).filter((key) => !MODE_LABELS[key]).map((key) => (
+              <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <label style={{ fontSize: 13, color: COLORS.text, fontFamily: FONT_BODY, flex: 1 }}>
+                  {SETTINGS_LABELS[key] || key}
+                </label>
+                <input
+                  value={settings[key]}
+                  onChange={(e) => updateSettingField(key, e.target.value)}
+                  style={{ width: 70, padding: "8px 10px", borderRadius: 10, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, textAlign: "center", fontSize: 13 }}
+                />
+              </div>
+            ))}
+          </div>
+          <Button onClick={saveSettings} style={{ width: "100%" }}>Enregistrer les réglages</Button>
+        </>
+      )}
+    </div>
+  );
+}
