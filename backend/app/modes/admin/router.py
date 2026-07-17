@@ -57,19 +57,9 @@ def get_stats(admin=Depends(get_current_admin)):
     return service.get_stats()
 
 
-@router.get("/modes-status")
-def modes_status():
-    """Public, sans authentification : le frontend l'utilise pour griser les
-    modes désactivés dès l'écran d'accueil, avant même de se connecter."""
-    return service.get_modes_status()
-
-
-@router.patch("/modes-status")
-def update_modes_status(patch: dict, admin=Depends(get_current_admin)):
-    """patch attendu : {"mode_chill_enabled": true/false, ...}"""
-    converted = {k: ("1" if v else "0") for k, v in patch.items() if k in service.MODE_KEYS}
-    service.update_settings(converted)
-    return service.get_modes_status()
+# Note : le statut public des modes est exposé par /api/modes/status (main.py),
+# et l'activation/désactivation se fait via PATCH /api/admin/settings — pas
+# besoin d'endpoints dédiés supplémentaires ici.
 
 
 @router.get("/modes-toggle")

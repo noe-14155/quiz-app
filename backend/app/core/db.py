@@ -4,8 +4,16 @@ import sqlite3
 from app.core.config import DATA_DIR, DB_PATH
 
 
+_data_dir_ready = False
+
+
 def get_connection():
-    os.makedirs(DATA_DIR, exist_ok=True)
+    # os.makedirs était appelé à CHAQUE connexion (donc à chaque requête HTTP) :
+    # inutile, le dossier ne disparaît pas en cours de route.
+    global _data_dir_ready
+    if not _data_dir_ready:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        _data_dir_ready = True
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -118,4 +126,19 @@ def init_schema():
         conn.execute("ALTER TABLE multi_rooms ADD COLUMN questions_data TEXT")
         conn.commit()
 
+    conn.close()
+
+
+def create_indexes():
+    """Index sur les colonnes réellement filtrées dans les requêtes chaudes.
+    À appeler APRÈS l'import du CSV, car la table `questions` est recréée à
+    chaque démarrage (ce qui détruit ses index)."""
+    conn = get_connection()
+    conn.executescript("""
+        CREATE INDEX IF NOT EXISTS idx_questions_theme ON questions(theme);
+        CREATE INDEX IF NOT EXISTS idx_questions_difficulte ON questions(difficulte);
+        CREATE INDEX IF NOT EXISTS idx_results_user ON question_results(user_id);
+        CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+    """)
+    conn.commit()
     conn.close()

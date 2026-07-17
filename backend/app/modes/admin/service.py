@@ -19,6 +19,18 @@ DEFAULT_SETTINGS = {
 MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_multi_enabled"]
 
 
+# Cache mémoire des réglages : is_mode_enabled() est appelé sur CHAQUE requête
+# de chaque mode, et ouvrait donc une connexion SQLite à chaque fois juste pour
+# lire 4 lignes qui changent une fois par mois. Le cache est vidé dès qu'un
+# admin modifie un réglage (voir update_settings), donc jamais périmé.
+_settings_cache = None
+
+
+def _invalidate_settings_cache():
+    global _settings_cache
+    _settings_cache = None
+
+
 def is_mode_enabled(mode_key: str) -> bool:
     """Utilisée par chaque mode pour vérifier s'il a été désactivé par un admin
     (en plus du frontend qui grise les cartes, pour une vraie protection côté serveur)."""
@@ -76,11 +88,15 @@ def delete_user(user_id: int):
 
 
 def get_settings():
+    global _settings_cache
+    if _settings_cache is not None:
+        return _settings_cache
     conn = get_connection()
     rows = conn.execute("SELECT key, value FROM app_settings").fetchall()
     conn.close()
     saved = {r["key"]: r["value"] for r in rows}
-    return {**DEFAULT_SETTINGS, **saved}
+    _settings_cache = {**DEFAULT_SETTINGS, **saved}
+    return _settings_cache
 
 
 def update_settings(patch: dict):
@@ -95,6 +111,7 @@ def update_settings(patch: dict):
         )
     conn.commit()
     conn.close()
+    _invalidate_settings_cache()
     return get_settings()
 
 

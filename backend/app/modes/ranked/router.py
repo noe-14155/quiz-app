@@ -18,7 +18,11 @@ router = APIRouter(prefix="/api/ranked", tags=["ranked"])
 
 def _pick_weighted_questions(tier: int, nb: int):
     weights = rank_config.weights_for_tier(tier)
-    all_questions = questions_service.fetch_questions(limit=100000, hide_answer=False, allow_repeat=False)
+    # shuffle=False : on ne mélange que les 10 questions retenues (plus bas),
+    # pas les 1114 candidates dont 1104 seront jetées.
+    all_questions = questions_service.fetch_questions(
+        limit=100000, hide_answer=False, allow_repeat=False, shuffle=False
+    )
     by_difficulty = {d: [q for q in all_questions if q["difficulte"] == d] for d in range(1, 6)}
 
     picked, used_ids = [], set()

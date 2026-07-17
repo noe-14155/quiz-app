@@ -84,10 +84,14 @@ def shuffle_choices(question):
     return {**question, "choix": choix, "bonne_reponse": bonne}
 
 
-def fetch_questions(themes=None, difficulte=None, difficulte_max=None, exclude_ids=None, limit=10, hide_answer=True, allow_repeat=True):
+def fetch_questions(themes=None, difficulte=None, difficulte_max=None, exclude_ids=None, limit=10, hide_answer=True, allow_repeat=True, shuffle=True):
     """Pioche des questions en base, mélange leurs réponses, et masque la
     bonne réponse/l'explication si hide_answer=True (cas des modes où le
-    client ne doit pas voir la réponse avant d'avoir répondu)."""
+    client ne doit pas voir la réponse avant d'avoir répondu).
+
+    shuffle=False sert aux appels qui ne font que PIOCHER dans un grand
+    ensemble (mode classé) : mélanger les réponses des 1114 questions pour
+    n'en garder que 10 était du travail jeté à la poubelle."""
     conn = get_connection()
     query = "SELECT * FROM questions WHERE 1=1"
     params = []
@@ -105,7 +109,18 @@ def fetch_questions(themes=None, difficulte=None, difficulte_max=None, exclude_i
         placeholders = ",".join("?" for _ in exclude_ids)
         query += f" AND id NOT IN ({placeholders})"
         params.extend(exclude_ids)
+    # Le LIMIT est poussé dans le SQL : avant, TOUTES les questions
+    # correspondantes (jusqu'à 1114) étaient chargées en mémoire et converties
+    # en dictionnaires pour n'en garder que 10.
     query += " ORDER BY RANDOM()"
+    if limit is not None and not allow_repeat:
+        query += " LIMIT ?"
+        params.append(limit)
+    elif limit is not None:
+        # allow_repeat : il faut au moins `limit` lignes, mais si la base en
+        # contient moins on recyclera celles disponibles.
+        query += " LIMIT ?"
+        params.append(limit)
     rows = conn.execute(query, params).fetchall()
     conn.close()
 
@@ -113,14 +128,15 @@ def fetch_questions(themes=None, difficulte=None, difficulte_max=None, exclude_i
     if not candidates:
         return []
 
+    prepare = shuffle_choices if shuffle else (lambda q: q)
     picked = []
     if allow_repeat:
         i = 0
         while len(picked) < limit:
-            picked.append(shuffle_choices(candidates[i % len(candidates)]))
+            picked.append(prepare(candidates[i % len(candidates)]))
             i += 1
     else:
-        picked = [shuffle_choices(c) for c in candidates[:limit]]
+        picked = [prepare(c) for c in candidates[:limit]]
 
     if hide_answer:
         for p in picked:

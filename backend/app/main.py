@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.db import init_schema
+from app.core.db import init_schema, create_indexes
 from app.questions.service import import_questions_from_csv
 from app.questions.router import router as questions_router
 from app.auth.router import router as auth_router
@@ -29,6 +29,7 @@ app.add_middleware(
 def on_startup():
     init_schema()  # tables persistantes (comptes, parties...) : créées si absentes, jamais supprimées
     import_questions_from_csv()  # table `questions` : recréée en entier depuis le CSV à chaque démarrage
+    create_indexes()  # APRÈS l'import : recréer la table `questions` détruit ses index
 
 
 @app.get("/api/health")
