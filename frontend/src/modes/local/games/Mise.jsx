@@ -145,7 +145,7 @@ export default function Mise({ screen, onNavigate }) {
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPlayer()}
             placeholder="Prénom du joueur"
-            style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, fontSize: 15 }} />
+            style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
           <Button onClick={addPlayer} disabled={!nameInput.trim()} style={{ padding: "0 18px" }}>+</Button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
@@ -158,7 +158,7 @@ export default function Mise({ screen, onNavigate }) {
         </div>
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Objectif de points</p>
         <input type="number" min={10} step={5} value={target} onChange={(e) => setTarget(Math.max(10, Number(e.target.value) || 10))}
-          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 20, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, fontSize: 15 }} />
+          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 20, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
         <Button onClick={start} disabled={players.length < 2} style={{ width: "100%" }}>Commencer</Button>
       </div>
     );

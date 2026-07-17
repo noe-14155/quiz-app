@@ -5,6 +5,7 @@ import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
 import QuitConfirmModal from "../../components/QuitConfirmModal";
+import SearchLink from "../../components/SearchLink";
 import { apiFetch } from "../../api/client";
 
 const THEMES = [
@@ -60,23 +61,26 @@ export default function Chill({ screen, onNavigate }) {
     }
   }
 
-  async function pick(choiceIdx) {
+  function pick(choiceIdx) {
     if (answered !== null) return;
     const q = pool[index];
     if (!q) return;
     setAnswered(choiceIdx);
-    try {
-      const result = await apiFetch("/api/chill/answer", {
-        method: "POST",
-        body: JSON.stringify({ question_id: q.id, choice: choiceIdx, choix: q.choix }),
-      });
-      setReveal(result);
-      if (result.correct) setScore((s) => s + 1);
-    } catch (e) {
-      // Sans ça, un échec réseau donnait l'impression que le clic "ne faisait rien".
-      setError(e.message);
-      setAnswered(null);
-    }
+
+    // Révélation INSTANTANÉE : la bonne réponse est déjà dans q (le mode chill
+    // la renvoie avec les questions), donc aucun aller-retour réseau à attendre
+    // avant d'afficher vert ou rouge.
+    const correctIdx = q.bonne_reponse - 1;
+    const isCorrect = choiceIdx === correctIdx;
+    setReveal({ correct: isCorrect, correct_index: correctIdx, explication: q.explication });
+    if (isCorrect) setScore((s) => s + 1);
+
+    // L'XP est enregistrée en arrière-plan : elle ne doit jamais retarder
+    // l'affichage. Un échec réseau ne coûte que l'XP de cette question.
+    apiFetch("/api/chill/answer", {
+      method: "POST",
+      body: JSON.stringify({ question_id: q.id, choice: choiceIdx, choix: q.choix }),
+    }).catch(() => {});
   }
 
   function next() {
@@ -175,7 +179,8 @@ export default function Chill({ screen, onNavigate }) {
         {reveal && (
           <>
             <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 16 }}>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: COLORS.muted }}>{reveal.explication}</p>
+              <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.6, color: COLORS.muted }}>{reveal.explication}</p>
+              <SearchLink question={q.question} reponse={q.choix[reveal.correct_index]} />
             </div>
             <Button onClick={next} style={{ width: "100%" }}>
               {index + 1 >= pool.length ? "Voir les résultats" : "Suivant"}

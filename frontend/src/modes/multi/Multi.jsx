@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { Copy, Star, Clock, Trophy } from "lucide-react";
+import { Copy, Star, Clock, Trophy, Check, X as XIcon, Minus } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY } from "../../design/theme";
 import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
 import QuitConfirmModal from "../../components/QuitConfirmModal";
+import SearchLink from "../../components/SearchLink";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 
@@ -13,6 +14,9 @@ const THEMES = [
   "Anecdotes", "Sciences & Nature", "Sport", "Art & Littérature", "Gastronomie", "Technologie & Internet",
 ];
 const POLL_MS = 2000;
+// Doivent rester alignées sur backend/app/modes/multi/sync.py
+const TIME_PER_QUESTION = 15;
+const REVEAL_SECONDS = 5;
 
 export default function Multi({ screen, onNavigate }) {
   const { user } = useAuth();
@@ -24,7 +28,17 @@ export default function Multi({ screen, onNavigate }) {
   const [state, setState] = useState(null); // résultat de /state pendant la partie
   const [error, setError] = useState(null);
   const [quitOpen, setQuitOpen] = useState(false);
+  // Horloge locale : le sondage serveur est à 2s, bien trop lent pour une
+  // barre de temps fluide. On tick chaque seconde en local et on se cale sur
+  // question_started_at renvoyé par le serveur (qui reste la référence).
+  const [now, setNow] = useState(() => Date.now());
   const pollRef = useRef(null);
+
+  useEffect(() => {
+    if (screen !== "multi-play") return;
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [screen]);
 
   useEffect(() => {
     if (user) setName(user.pseudo);
@@ -160,7 +174,7 @@ export default function Multi({ screen, onNavigate }) {
           <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 16px" }}>Connecté en tant que <b>{user.pseudo}</b></p>
         ) : (
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ton pseudo"
-            style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 16, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, fontSize: 15 }} />
+            style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 16, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
         )}
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 16px" }}>{error}</p>}
         <Button onClick={createRoom} disabled={!name.trim()} style={{ width: "100%" }}>Créer la partie</Button>
@@ -175,12 +189,12 @@ export default function Multi({ screen, onNavigate }) {
         <TopBar screen="multi-join-setup" onNavigate={onNavigate} />
         <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>Rejoindre une partie</h2>
         <input value={codeInput} onChange={(e) => setCodeInput(e.target.value.toUpperCase())} placeholder="Code (ex: HGFDO)"
-          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, fontSize: 15, letterSpacing: 2, textTransform: "uppercase" }} />
+          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15, letterSpacing: 2, textTransform: "uppercase" }} />
         {user ? (
           <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 16px" }}>Connecté en tant que <b>{user.pseudo}</b></p>
         ) : (
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ton pseudo"
-            style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 16, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, fontSize: 15 }} />
+            style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 16, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
         )}
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 16px" }}>{error}</p>}
         <Button onClick={joinRoom} disabled={!codeInput.trim() || !name.trim()} style={{ width: "100%" }}>Rejoindre</Button>
@@ -258,12 +272,36 @@ export default function Multi({ screen, onNavigate }) {
     const myAnswer = state.answers[name]?.choice ?? null;
     const isReveal = state.room.phase === "reveal";
 
+    const startedAt = state.room.question_started_at ? Date.parse(state.room.question_started_at) : null;
+    const elapsed = startedAt ? (now - startedAt) / 1000 : 0;
+    const timeLeft = Math.max(0, Math.ceil(TIME_PER_QUESTION - elapsed));
+    const timePct = Math.max(0, Math.min(100, ((TIME_PER_QUESTION - elapsed) / TIME_PER_QUESTION) * 100));
+
+    // Qui a trouvé : pendant la révélation, la bonne réponse est connue, donc
+    // on peut distinguer trouvé / raté / pas répondu plutôt qu'un simple
+    // "a répondu" qui ne disait rien du résultat.
+    const correctIdx = q && q.bonne_reponse ? q.bonne_reponse - 1 : null;
+    function playerOutcome(p) {
+      const a = state.answers[p];
+      if (!a) return "none";
+      if (correctIdx === null) return "answered";
+      return a.choice === correctIdx ? "correct" : "wrong";
+    }
+
     if (!isReveal) {
       return (
         <div style={cardWrap}>
           {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveRoom} />}
           <TopBar screen="multi-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
-          <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Question {state.room.current_index + 1} / {JSON.parse(state.room.question_ids || "[]").length || "?"}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Question {state.room.current_index + 1} / {JSON.parse(state.room.question_ids || "[]").length || "?"}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: timeLeft <= 5 ? COLORS.danger : COLORS.muted }}>
+              <Clock size={14} /><span style={{ fontSize: 13, fontWeight: 700 }}>{timeLeft}s</span>
+            </div>
+          </div>
+          <div style={{ height: 6, borderRadius: 3, background: COLORS.cardAlt, marginBottom: 16, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${timePct}%`, background: timeLeft <= 5 ? COLORS.danger : COLORS.gold, transition: "width 0.25s linear" }} />
+          </div>
           {q && (
             <>
               <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "16px 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
@@ -272,14 +310,25 @@ export default function Multi({ screen, onNavigate }) {
             </>
           )}
           {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "18px 0 10px", textTransform: "uppercase" }}>Qui a répondu</p>
+          <p style={{ fontSize: 13, color: COLORS.muted, margin: "18px 0 10px", textTransform: "uppercase" }}>
+            Qui a répondu ({state.room.players.filter((p) => state.answers[p]).length}/{state.room.players.length})
+          </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {state.room.players.map((p) => (
-              <div key={p} style={{ display: "flex", justifyContent: "space-between", background: COLORS.card, borderRadius: 12, padding: "8px 14px" }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{p}</span>
-                <span style={{ fontSize: 12, color: state.answers[p] ? COLORS.success : COLORS.muted }}>{state.answers[p] ? "A répondu" : "En attente…"}</span>
-              </div>
-            ))}
+            {state.room.players.map((p) => {
+              const done = !!state.answers[p];
+              return (
+                <div key={p} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  background: COLORS.card, borderRadius: 12, padding: "8px 14px",
+                  border: `2px solid ${done ? COLORS.success : "transparent"}`,
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>{p}{p === name ? " (toi)" : ""}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: done ? COLORS.success : COLORS.muted }}>
+                    {done ? <><Check size={14} /> A répondu</> : <><Minus size={14} /> En attente…</>}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -294,25 +343,40 @@ export default function Multi({ screen, onNavigate }) {
             <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
             <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 700, margin: "0 0 16px" }}>{q.question}</h3>
             <AnswerGrid choix={q.choix} answered={myAnswer ?? -1} correctIndex={q.bonne_reponse ? q.bonne_reponse - 1 : null} onPick={() => {}} />
-            {q.explication && (
-              <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, margin: "8px 0 18px" }}>
-                <p style={{ margin: 0, fontSize: 14, color: COLORS.muted }}>{q.explication}</p>
-              </div>
-            )}
+            <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, margin: "8px 0 18px" }}>
+              {q.explication && <p style={{ margin: "0 0 12px", fontSize: 14, color: COLORS.muted }}>{q.explication}</p>}
+              <SearchLink question={q.question} reponse={correctIdx !== null ? q.choix[correctIdx] : ""} />
+            </div>
           </>
         )}
-        <div style={{ textAlign: "center", marginBottom: 18 }}>
-          <Trophy size={28} color={COLORS.gold} style={{ marginBottom: 6 }} />
-          <p style={{ fontSize: 13, color: COLORS.muted }}>Prochaine question dans quelques secondes…</p>
+        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Résultat de la manche</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+          {[...state.room.players].sort((a, b) => (state.scores[b] || 0) - (state.scores[a] || 0)).map((p) => {
+            const outcome = playerOutcome(p);
+            const color = outcome === "correct" ? COLORS.success : outcome === "wrong" ? COLORS.danger : COLORS.muted;
+            const label = outcome === "correct" ? "Trouvé" : outcome === "wrong" ? "Raté" : "Pas répondu";
+            const Icon = outcome === "correct" ? Check : outcome === "wrong" ? XIcon : Minus;
+            return (
+              <div key={p} style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                background: COLORS.card, borderRadius: 12, padding: "9px 14px",
+                borderLeft: `4px solid ${color}`,
+              }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 13 }}>
+                  <Icon size={15} color={color} />
+                  {p}{p === name ? " (toi)" : ""}
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color }}>{label}</span>
+                  <span style={{ fontWeight: 700, color: COLORS.gold, fontSize: 13, minWidth: 46, textAlign: "right" }}>{state.scores[p] || 0} pts</span>
+                </span>
+              </div>
+            );
+          })}
         </div>
-        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Score total</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {[...state.room.players].sort((a, b) => (state.scores[b] || 0) - (state.scores[a] || 0)).map((p) => (
-            <div key={p} style={{ display: "flex", justifyContent: "space-between", background: COLORS.card, borderRadius: 12, padding: "8px 14px" }}>
-              <span style={{ fontWeight: 700, fontSize: 13 }}>{p}</span>
-              <span style={{ fontWeight: 700, color: COLORS.gold, fontSize: 13 }}>{state.scores[p] || 0} pts</span>
-            </div>
-          ))}
+        <div style={{ textAlign: "center" }}>
+          <Trophy size={24} color={COLORS.gold} style={{ marginBottom: 4 }} />
+          <p style={{ fontSize: 13, color: COLORS.muted, margin: 0 }}>Prochaine question dans quelques secondes…</p>
         </div>
       </div>
     );

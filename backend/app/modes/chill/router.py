@@ -16,8 +16,17 @@ def get_chill_questions(themes: str, difficulte_max: int, nb: int = 10):
     if not is_mode_enabled("mode_chill_enabled"):
         raise HTTPException(status_code=403, detail="Le mode chill est temporairement désactivé")
     theme_list = themes.split(",")
+    # hide_answer=False : le mode chill renvoie la bonne réponse AVEC les
+    # questions, ce qui permet d'afficher vert/rouge instantanément au clic,
+    # sans attendre un aller-retour réseau.
+    # Compromis assumé : la réponse est visible dans les outils réseau du
+    # navigateur. Acceptable ici car le chill n'alimente ni le classement ni
+    # les stats de thème (seulement l'XP). Le mode CLASSÉ, lui, garde
+    # volontairement la vérification côté serveur.
+    # shuffle_choices réajuste bonne_reponse à l'ordre affiché : l'index reçu
+    # correspond donc bien au tableau "choix" du client.
     questions = questions_service.fetch_questions(
-        themes=theme_list, difficulte_max=difficulte_max, limit=nb, hide_answer=True, allow_repeat=True,
+        themes=theme_list, difficulte_max=difficulte_max, limit=nb, hide_answer=False, allow_repeat=True,
     )
     return {"questions": questions}
 

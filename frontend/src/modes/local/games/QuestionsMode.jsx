@@ -101,7 +101,7 @@ export default function QuestionsMode({ screen, onNavigate }) {
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPlayer()}
             placeholder="Prénom du joueur"
-            style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, fontSize: 15 }} />
+            style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
           <Button onClick={addPlayer} disabled={!nameInput.trim()} style={{ padding: "0 18px" }}>+</Button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
@@ -128,7 +128,7 @@ export default function QuestionsMode({ screen, onNavigate }) {
 
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Objectif de points</p>
         <input type="number" min={5} step={5} value={target} onChange={(e) => setTarget(Math.max(5, Number(e.target.value) || 5))}
-          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 20, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, fontSize: 15 }} />
+          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 20, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
 
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
         <Button onClick={start} disabled={players.length < 2 || themes.length === 0} style={{ width: "100%" }}>Commencer</Button>

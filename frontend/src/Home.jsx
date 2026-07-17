@@ -1,10 +1,37 @@
 import { useEffect, useState } from "react";
 import { Users, Trophy, Lock } from "lucide-react";
-import { COLORS, FONT_DISPLAY, cardWrap } from "./design/theme";
+import { COLORS, FONT_DISPLAY, cardWrap, tierInfo } from "./design/theme";
 import TopBar from "./components/TopBar";
 import Button from "./components/Button";
 import { useAuth } from "./auth/AuthContext";
 import { apiFetch } from "./api/client";
+
+/**
+ * Rang affiché directement sur l'accueil : badge, cumul de points, et barre
+ * de progression vers le palier suivant — sans avoir à entrer dans le mode.
+ */
+function HomeRankBadge({ user }) {
+  const t = tierInfo(user.rank_tier);
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12,
+      background: COLORS.cardAlt, borderRadius: 12, padding: "10px 12px", marginBottom: 12,
+    }}>
+      <div style={{ width: 34, height: 34, borderRadius: 9, background: t.rank.color, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontFamily: FONT_DISPLAY, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
+            {t.rank.name} {t.palierLabel}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.muted }}>{user.rank_points} pts</span>
+        </div>
+        <div style={{ height: 5, borderRadius: 3, background: COLORS.card, marginTop: 5, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${user.rank_progress || 0}%`, background: t.rank.color }} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ModeCard({ icon, title, description, enabled, children }) {
   return (
@@ -50,6 +77,7 @@ export default function Home({ screen, onNavigate }) {
           description="Timer, points, rangs. Nécessite un compte."
           enabled={modes.mode_ranked_enabled}
         >
+          {user && <HomeRankBadge user={user} />}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Button onClick={() => onNavigate(user ? "ranked-setup" : "login")}>
               {user ? "Jouer" : "Se connecter pour jouer"}

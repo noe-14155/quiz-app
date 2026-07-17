@@ -5,6 +5,7 @@ import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
 import QuitConfirmModal from "../../components/QuitConfirmModal";
+import SearchLink from "../../components/SearchLink";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 
@@ -170,9 +171,12 @@ export default function Ranked({ screen, onNavigate }) {
           <>
             <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, margin: "16px 0" }}>
               <p style={{ margin: "0 0 8px", fontSize: 14, lineHeight: 1.6, color: COLORS.muted }}>{reveal.explication}</p>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: reveal.delta_points >= 0 ? COLORS.success : COLORS.danger }}>
-                {reveal.delta_points >= 0 ? "+" : ""}{reveal.delta_points} points
-              </p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: reveal.delta_points >= 0 ? COLORS.success : COLORS.danger }}>
+                  {reveal.delta_points >= 0 ? "+" : ""}{reveal.delta_points} points
+                </p>
+                <SearchLink question={q.question} reponse={q.choix[reveal.bonne_reponse - 1]} />
+              </div>
             </div>
             <Button onClick={next} style={{ width: "100%" }}>
               {index + 1 >= pool.length ? "Voir les résultats" : "Suivant"}
