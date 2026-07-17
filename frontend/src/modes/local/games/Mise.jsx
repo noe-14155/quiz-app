@@ -134,7 +134,7 @@ export default function Mise({ screen, onNavigate }) {
     }
   }
 
-  if (phase === "setup" || screen === "mise-setup") {
+  if (screen === "mise-setup") {
     return (
       <div style={cardWrap}>
         <TopBar screen="mise-setup" onNavigate={onNavigate} />
@@ -174,7 +174,7 @@ export default function Mise({ screen, onNavigate }) {
     </div>
   );
 
-  if (phase === "bidding") {
+  if (screen === "mise-play" && phase === "bidding") {
     const bidderIndex = bidOrder[bidStep];
     const bidder = players[bidderIndex];
     const taken = new Set(Object.values(bids));
@@ -202,7 +202,7 @@ export default function Mise({ screen, onNavigate }) {
     );
   }
 
-  if (phase === "question") {
+  if (screen === "mise-play") {
     const playerIndex = bidOrder[questionStep];
     const player = players[playerIndex];
     const bid = bids[playerIndex];
@@ -258,7 +258,7 @@ export default function Mise({ screen, onNavigate }) {
       </div>
       <div style={{ display: "flex", gap: 10 }}>
         <Button variant="secondary" onClick={() => onNavigate("home")} style={{ flex: 1 }}>Accueil</Button>
-        <Button onClick={() => setPhase("setup")} style={{ flex: 1 }}>Rejouer</Button>
+        <Button onClick={() => onNavigate("mise-setup")} style={{ flex: 1 }}>Rejouer</Button>
       </div>
     </div>
   );

@@ -1,11 +1,37 @@
-import { Users, Trophy } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, Trophy, Lock } from "lucide-react";
 import { COLORS, FONT_DISPLAY, cardWrap } from "./design/theme";
 import TopBar from "./components/TopBar";
 import Button from "./components/Button";
 import { useAuth } from "./auth/AuthContext";
+import { apiFetch } from "./api/client";
+
+function ModeCard({ icon, title, description, enabled, children }) {
+  return (
+    <div style={{ background: COLORS.card, borderRadius: 16, padding: 18, opacity: enabled ? 1 : 0.5 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        {icon}
+        <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: 0 }}>{title}</p>
+      </div>
+      <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 12px" }}>{description}</p>
+      {enabled ? children : (
+        <p style={{ fontSize: 13, color: COLORS.muted, display: "flex", alignItems: "center", gap: 6, margin: 0 }}>
+          <Lock size={14} /> Temporairement désactivé
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function Home({ screen, onNavigate }) {
   const { user } = useAuth();
+  const [modes, setModes] = useState({
+    mode_chill_enabled: true, mode_ranked_enabled: true, mode_local_enabled: true, mode_multi_enabled: true,
+  });
+
+  useEffect(() => {
+    apiFetch("/api/modes/status").then(setModes).catch(() => {});
+  }, []);
 
   return (
     <div style={cardWrap}>
@@ -14,43 +40,41 @@ export default function Home({ screen, onNavigate }) {
       <p style={{ color: COLORS.muted, margin: "0 0 24px", fontSize: 14 }}>Choisis un mode de jeu.</p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ background: COLORS.card, borderRadius: 16, padding: 18 }}>
-          <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: "0 0 4px" }}>Mode chill</p>
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 12px" }}>Sans timer, à ton rythme.</p>
+        <ModeCard title="Mode chill" description="Sans timer, à ton rythme." enabled={modes.mode_chill_enabled}>
           <Button onClick={() => onNavigate("chill-setup")}>Jouer</Button>
-        </div>
+        </ModeCard>
 
-        <div style={{ background: COLORS.card, borderRadius: 16, padding: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <Trophy size={18} color={COLORS.gold} />
-            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: 0 }}>Mode classé</p>
-          </div>
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 12px" }}>Timer, points, rangs. Nécessite un compte.</p>
+        <ModeCard
+          icon={<Trophy size={18} color={COLORS.gold} />}
+          title="Mode classé"
+          description="Timer, points, rangs. Nécessite un compte."
+          enabled={modes.mode_ranked_enabled}
+        >
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Button onClick={() => onNavigate(user ? "ranked-setup" : "login")}>
               {user ? "Jouer" : "Se connecter pour jouer"}
             </Button>
             <Button variant="secondary" onClick={() => onNavigate("leaderboard")}>Classement</Button>
           </div>
-        </div>
+        </ModeCard>
 
-        <div style={{ background: COLORS.card, borderRadius: 16, padding: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <Users size={18} color={COLORS.gold} />
-            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: 0 }}>Mode Multi</p>
-          </div>
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 12px" }}>À distance, avec un code de partie à partager.</p>
+        <ModeCard
+          icon={<Users size={18} color={COLORS.gold} />}
+          title="Mode Multi"
+          description="À distance, avec un code de partie à partager."
+          enabled={modes.mode_multi_enabled}
+        >
           <Button onClick={() => onNavigate("multi-choice")}>Jouer</Button>
-        </div>
+        </ModeCard>
 
-        <div style={{ background: COLORS.card, borderRadius: 16, padding: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <Users size={18} color={COLORS.gold} />
-            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: 0 }}>Mode local</p>
-          </div>
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 12px" }}>Entre potes, sur un seul écran.</p>
+        <ModeCard
+          icon={<Users size={18} color={COLORS.gold} />}
+          title="Mode local"
+          description="Entre potes, sur un seul écran."
+          enabled={modes.mode_local_enabled}
+        >
           <Button onClick={() => onNavigate("local-choice")}>Jouer</Button>
-        </div>
+        </ModeCard>
       </div>
     </div>
   );

@@ -16,13 +16,12 @@ const POLL_MS = 2000;
 
 export default function Multi({ screen, onNavigate }) {
   const { user } = useAuth();
-  const [step, setStep] = useState("choice"); // choice | host-setup | join-setup | lobby | play | results
   const [name, setName] = useState(user ? user.pseudo : "");
   const [codeInput, setCodeInput] = useState("");
   const [code, setCode] = useState(null);
   const [isHost, setIsHost] = useState(false);
   const [room, setRoom] = useState(null);
-  const [state, setState] = useState(null); // résultat de /state pendant "play"
+  const [state, setState] = useState(null); // résultat de /state pendant la partie
   const [error, setError] = useState(null);
   const [quitOpen, setQuitOpen] = useState(false);
   const pollRef = useRef(null);
@@ -31,50 +30,37 @@ export default function Multi({ screen, onNavigate }) {
     if (user) setName(user.pseudo);
   }, [user]);
 
-  // Le bouton "Retour" de TopBar met à jour le "screen" du parent sans
-  // toucher à l'état interne "step" — cette synchronisation évite de rester
-  // bloqué sur l'écran héberger/rejoindre après un clic sur "Retour".
-  useEffect(() => {
-    if (screen === "multi-choice") setStep("choice");
-  }, [screen]);
-
   // ---------- lobby polling ----------
   useEffect(() => {
-    if (step !== "lobby" || !code) return;
+    if (screen !== "multi-lobby" || !code) return;
     async function poll() {
       try {
         const r = await apiFetch(`/api/multi/${code}`);
         setRoom(r);
-        if (r.status === "playing") {
-          setStep("play");
-          onNavigate("multi-play");
-        }
+        if (r.status === "playing") onNavigate("multi-play");
       } catch (e) { /* ignore ponctuel */ }
     }
     poll();
     pollRef.current = setInterval(poll, POLL_MS);
     return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, code]);
+  }, [screen, code]);
 
   // ---------- play polling ----------
   useEffect(() => {
-    if (step !== "play" || !code) return;
+    if (screen !== "multi-play" || !code) return;
     async function poll() {
       try {
         const r = await apiFetch(`/api/multi/${code}/state`);
         setState(r);
-        if (r.room.status === "finished") {
-          setStep("results");
-          onNavigate("multi-results");
-        }
+        if (r.room.status === "finished") onNavigate("multi-results");
       } catch (e) { /* ignore ponctuel */ }
     }
     poll();
     pollRef.current = setInterval(poll, POLL_MS);
     return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, code]);
+  }, [screen, code]);
 
   async function createRoom() {
     setError(null);
@@ -84,7 +70,6 @@ export default function Multi({ screen, onNavigate }) {
       setIsHost(true);
       const roomData = await apiFetch(`/api/multi/${r.code}`);
       setRoom(roomData);
-      setStep("lobby");
       onNavigate("multi-lobby");
     } catch (e) { setError(e.message); }
   }
@@ -98,7 +83,6 @@ export default function Multi({ screen, onNavigate }) {
       setCode(c);
       setIsHost(false);
       setRoom(roomData);
-      setStep("lobby");
       onNavigate("multi-lobby");
     } catch (e) { setError(e.message); }
   }
@@ -117,6 +101,7 @@ export default function Multi({ screen, onNavigate }) {
   }
 
   async function startGame() {
+    setError(null);
     try {
       await apiFetch(`/api/multi/${code}/start`, { method: "POST" });
     } catch (e) { setError(e.message); }
@@ -141,12 +126,11 @@ export default function Multi({ screen, onNavigate }) {
     setRoom(null);
     setState(null);
     setIsHost(false);
-    setStep("choice");
     onNavigate("home");
   }
 
   // ---------- CHOICE ----------
-  if (step === "choice") {
+  if (screen === "multi-choice") {
     return (
       <div style={cardWrap}>
         <TopBar screen="multi-choice" onNavigate={onNavigate} />
@@ -155,11 +139,11 @@ export default function Multi({ screen, onNavigate }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ background: COLORS.card, borderRadius: 16, padding: 18 }}>
             <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: "0 0 4px" }}>Héberger une partie</p>
-            <Button onClick={() => { setStep("host-setup"); setError(null); }}>Héberger</Button>
+            <Button onClick={() => { setError(null); onNavigate("multi-host-setup"); }}>Héberger</Button>
           </div>
           <div style={{ background: COLORS.card, borderRadius: 16, padding: 18 }}>
             <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: "0 0 4px" }}>Rejoindre une partie</p>
-            <Button onClick={() => { setStep("join-setup"); setError(null); }}>Rejoindre</Button>
+            <Button onClick={() => { setError(null); onNavigate("multi-join-setup"); }}>Rejoindre</Button>
           </div>
         </div>
       </div>
@@ -167,7 +151,7 @@ export default function Multi({ screen, onNavigate }) {
   }
 
   // ---------- HOST SETUP ----------
-  if (step === "host-setup") {
+  if (screen === "multi-host-setup") {
     return (
       <div style={cardWrap}>
         <TopBar screen="multi-host-setup" onNavigate={onNavigate} />
@@ -185,7 +169,7 @@ export default function Multi({ screen, onNavigate }) {
   }
 
   // ---------- JOIN SETUP ----------
-  if (step === "join-setup") {
+  if (screen === "multi-join-setup") {
     return (
       <div style={cardWrap}>
         <TopBar screen="multi-join-setup" onNavigate={onNavigate} />
@@ -205,7 +189,7 @@ export default function Multi({ screen, onNavigate }) {
   }
 
   // ---------- LOBBY ----------
-  if (step === "lobby" && room) {
+  if (screen === "multi-lobby" && room) {
     return (
       <div style={cardWrap}>
         {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveRoom} />}
@@ -269,7 +253,7 @@ export default function Multi({ screen, onNavigate }) {
   }
 
   // ---------- PLAY ----------
-  if (step === "play" && state) {
+  if (screen === "multi-play" && state) {
     const q = state.current_question;
     const myAnswer = state.answers[name]?.choice ?? null;
     const isReveal = state.room.phase === "reveal";
@@ -287,6 +271,7 @@ export default function Multi({ screen, onNavigate }) {
               <AnswerGrid choix={q.choix} answered={myAnswer} onPick={submitAnswer} revealCorrectness={false} />
             </>
           )}
+          {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
           <p style={{ fontSize: 13, color: COLORS.muted, margin: "18px 0 10px", textTransform: "uppercase" }}>Qui a répondu</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {state.room.players.map((p) => (
@@ -334,7 +319,7 @@ export default function Multi({ screen, onNavigate }) {
   }
 
   // ---------- RESULTS ----------
-  if (step === "results" && state) {
+  if (screen === "multi-results" && state) {
     const sorted = [...state.room.players].sort((a, b) => (state.scores[b] || 0) - (state.scores[a] || 0));
     return (
       <div style={cardWrap}>
@@ -353,5 +338,12 @@ export default function Multi({ screen, onNavigate }) {
     );
   }
 
-  return null;
+  // Cas transitoire (ex: venant de rejoindre mais room pas encore chargée) :
+  // on retombe sur l'écran de choix plutôt que d'afficher une page blanche.
+  return (
+    <div style={cardWrap}>
+      <TopBar screen="multi-choice" onNavigate={onNavigate} />
+      <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement...</p>
+    </div>
+  );
 }

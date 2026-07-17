@@ -12,15 +12,18 @@ const THEMES = [
   "Anecdotes", "Sciences & Nature", "Sport", "Art & Littérature", "Gastronomie", "Technologie & Internet",
 ];
 
+// Règle d'architecture (voir CLAUDE.md §8) : l'écran affiché est piloté
+// UNIQUEMENT par la prop "screen" venant du parent. Aucun état interne
+// parallèle du type "phase" — avoir deux sources de vérité pour "quel écran
+// afficher" a déjà causé des bugs de navigation (bouton Retour désynchronisé).
 export default function Chill({ screen, onNavigate }) {
-  const [phase, setPhase] = useState("setup"); // setup | quiz | results
   const [themes, setThemes] = useState(THEMES);
   const [diff, setDiff] = useState(3);
   const [nb, setNb] = useState(10);
   const [pool, setPool] = useState([]);
   const [index, setIndex] = useState(0);
   const [answered, setAnswered] = useState(null);
-  const [reveal, setReveal] = useState(null); // { correct, bonne_reponse, explication }
+  const [reveal, setReveal] = useState(null);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -37,12 +40,18 @@ export default function Chill({ screen, onNavigate }) {
       const result = await apiFetch(
         `/api/chill/questions?themes=${encodeURIComponent(themes.join(","))}&difficulte_max=${diff}&nb=${nb}`
       );
+      // Garde-fou : sans questions, passer à l'écran de quiz planterait le
+      // rendu (lecture de pool[0] sur un tableau vide) et l'écran semblerait
+      // simplement figé au clic. On reste sur le réglage avec un message clair.
+      if (!result.questions || result.questions.length === 0) {
+        setError("Aucune question ne correspond à ces thèmes et cette difficulté. Essaie d'élargir la sélection.");
+        return;
+      }
       setPool(result.questions);
       setIndex(0);
       setScore(0);
       setAnswered(null);
       setReveal(null);
-      setPhase("quiz");
       onNavigate("chill-quiz");
     } catch (e) {
       setError(e.message);
@@ -53,38 +62,41 @@ export default function Chill({ screen, onNavigate }) {
 
   async function pick(choiceIdx) {
     if (answered !== null) return;
-    setAnswered(choiceIdx);
     const q = pool[index];
+    if (!q) return;
+    setAnswered(choiceIdx);
     try {
       const result = await apiFetch("/api/chill/answer", {
         method: "POST",
-        body: JSON.stringify({ question_id: q.id, choice: choiceIdx, answer_text: q.choix[choiceIdx] }),
+        body: JSON.stringify({ question_id: q.id, choice: choiceIdx, choix: q.choix }),
       });
       setReveal(result);
       if (result.correct) setScore((s) => s + 1);
     } catch (e) {
+      // Sans ça, un échec réseau donnait l'impression que le clic "ne faisait rien".
       setError(e.message);
+      setAnswered(null);
     }
   }
 
   function next() {
     if (index + 1 >= pool.length) {
-      setPhase("results");
       onNavigate("chill-results");
     } else {
       setIndex((i) => i + 1);
       setAnswered(null);
       setReveal(null);
+      setError(null);
     }
   }
 
   function quitToHome() {
     setQuitOpen(false);
-    setPhase("setup");
     onNavigate("home");
   }
 
-  if (phase === "setup" || screen === "chill-setup") {
+  // ---------- SETUP ----------
+  if (screen === "chill-setup") {
     return (
       <div style={cardWrap}>
         <TopBar screen="chill-setup" onNavigate={onNavigate} />
@@ -129,8 +141,20 @@ export default function Chill({ screen, onNavigate }) {
     );
   }
 
-  if (phase === "quiz") {
+  // ---------- QUIZ ----------
+  if (screen === "chill-quiz") {
     const q = pool[index];
+    // Filet de sécurité : si on arrive ici sans question chargée (ex: retour
+    // arrière inattendu), on renvoie vers le réglage au lieu de planter.
+    if (!q) {
+      return (
+        <div style={cardWrap}>
+          <TopBar screen="chill-setup" onNavigate={onNavigate} />
+          <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 16 }}>Aucune question chargée.</p>
+          <Button onClick={() => onNavigate("chill-setup")} style={{ width: "100%" }}>Revenir aux réglages</Button>
+        </div>
+      );
+    }
     return (
       <div style={cardWrap}>
         {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={quitToHome} />}
@@ -144,7 +168,9 @@ export default function Chill({ screen, onNavigate }) {
         <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
         <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, margin: "0 0 20px" }}>{q.question}</h3>
 
-        <AnswerGrid choix={q.choix} answered={answered} correctIndex={reveal ? q.choix.indexOf(reveal.bonne_reponse_text) : null} onPick={pick} revealCorrectness={reveal !== null} />
+        <AnswerGrid choix={q.choix} answered={answered} correctIndex={reveal ? reveal.correct_index : null} onPick={pick} revealCorrectness={reveal !== null} />
+
+        {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
 
         {reveal && (
           <>
@@ -160,7 +186,7 @@ export default function Chill({ screen, onNavigate }) {
     );
   }
 
-  // results
+  // ---------- RESULTS ----------
   return (
     <div style={cardWrap}>
       <TopBar screen="chill-results" onNavigate={onNavigate} />
@@ -168,7 +194,7 @@ export default function Chill({ screen, onNavigate }) {
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 6px", textTransform: "uppercase" }}>Résultat</p>
         <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 38, fontWeight: 700, margin: 0 }}>{score} / {pool.length}</h2>
       </div>
-      <Button onClick={() => setPhase("setup")} style={{ width: "100%" }}>Rejouer</Button>
+      <Button onClick={() => onNavigate("chill-setup")} style={{ width: "100%" }}>Rejouer</Button>
     </div>
   );
 }

@@ -36,7 +36,10 @@ export default function Leaderboard({ screen, onNavigate, onViewProfile }) {
                 <span style={{ width: 20, textAlign: "center", fontWeight: 700, color: COLORS.muted, fontSize: 13 }}>{i + 1}</span>
                 <span style={{ fontWeight: 700, fontSize: 14 }}>{p.pseudo}</span>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: t.rank.color }}>{t.rank.name} {t.palierLabel}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 12, color: COLORS.muted }}>{p.rank_points} pts</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: t.rank.color }}>{t.rank.name} {t.palierLabel}</span>
+              </div>
             </div>
           );
         })}

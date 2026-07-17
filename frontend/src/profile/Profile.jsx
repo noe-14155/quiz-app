@@ -40,9 +40,12 @@ function ProfileBody({ profile }) {
       <div style={{ display: "flex", alignItems: "center", gap: 14, background: COLORS.card, borderRadius: 14, padding: 16 }}>
         <div style={{ width: 48, height: 48, borderRadius: 12, background: t.rank.color, flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
-          <p style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700, margin: 0 }}>{t.rank.name} {t.palierLabel}</p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700, margin: 0 }}>{t.rank.name} {t.palierLabel}</p>
+            <p style={{ fontSize: 12, color: COLORS.muted, margin: 0, fontWeight: 700 }}>{profile.rank_points} pts</p>
+          </div>
           <div style={{ height: 6, borderRadius: 3, background: COLORS.cardAlt, marginTop: 6, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${profile.rank_points}%`, background: t.rank.color }} />
+            <div style={{ height: "100%", width: `${profile.rank_progress}%`, background: t.rank.color }} />
           </div>
         </div>
       </div>

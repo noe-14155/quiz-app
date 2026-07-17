@@ -91,7 +91,7 @@ export default function QuestionsMode({ screen, onNavigate }) {
     setQuestion(null);
   }
 
-  if (phase === "setup" || screen === "questions-mode-setup") {
+  if (screen === "questions-mode-setup") {
     return (
       <div style={cardWrap}>
         <TopBar screen="questions-mode-setup" onNavigate={onNavigate} />
@@ -146,7 +146,7 @@ export default function QuestionsMode({ screen, onNavigate }) {
     </div>
   );
 
-  if (phase === "play") {
+  if (screen === "questions-mode-play") {
     return (
       <div style={cardWrap}>
         {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveToHome} />}
@@ -207,7 +207,7 @@ export default function QuestionsMode({ screen, onNavigate }) {
       </div>
       <div style={{ display: "flex", gap: 10 }}>
         <Button variant="secondary" onClick={() => onNavigate("home")} style={{ flex: 1 }}>Accueil</Button>
-        <Button onClick={() => setPhase("setup")} style={{ flex: 1 }}>Rejouer</Button>
+        <Button onClick={() => onNavigate("questions-mode-setup")} style={{ flex: 1 }}>Rejouer</Button>
       </div>
     </div>
   );

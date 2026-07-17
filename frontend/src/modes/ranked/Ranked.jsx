@@ -10,15 +10,18 @@ import { useAuth } from "../../auth/AuthContext";
 
 const TIME_PER_QUESTION = 15;
 
-function RankBadge({ tier, points }) {
+function RankBadge({ tier, points, progress }) {
   const t = tierInfo(tier);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 14, background: COLORS.card, borderRadius: 14, padding: 16 }}>
       <div style={{ width: 48, height: 48, borderRadius: 12, background: t.rank.color, flexShrink: 0 }} />
       <div style={{ flex: 1 }}>
-        <p style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700, margin: 0 }}>{t.rank.name} {t.palierLabel}</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <p style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700, margin: 0 }}>{t.rank.name} {t.palierLabel}</p>
+          <p style={{ fontSize: 12, color: COLORS.muted, margin: 0, fontWeight: 700 }}>{points} pts</p>
+        </div>
         <div style={{ height: 6, borderRadius: 3, background: COLORS.cardAlt, marginTop: 6, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${points}%`, background: t.rank.color }} />
+          <div style={{ height: "100%", width: `${progress}%`, background: t.rank.color }} />
         </div>
       </div>
     </div>
@@ -116,12 +119,12 @@ export default function Ranked({ screen, onNavigate }) {
     onNavigate("home");
   }
 
-  if (phase === "setup" || screen === "ranked-setup") {
+  if (screen === "ranked-setup") {
     return (
       <div style={cardWrap}>
         <TopBar screen="ranked-setup" onNavigate={onNavigate} />
         <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 16px" }}>Mode classé</h2>
-        {user && <RankBadge tier={user.rank_tier} points={user.rank_points} />}
+        {user && <RankBadge tier={user.rank_tier} points={user.rank_points} progress={user.rank_progress} />}
         <ul style={{ fontSize: 13, color: COLORS.muted, margin: "20px 0", paddingLeft: 18, lineHeight: 1.8 }}>
           <li>10 questions, {TIME_PER_QUESTION}s chacune</li>
           <li>Bonne réponse : +12 points</li>
@@ -136,7 +139,7 @@ export default function Ranked({ screen, onNavigate }) {
     );
   }
 
-  if (phase === "quiz") {
+  if (screen === "ranked-quiz") {
     const q = pool[index];
     const timePct = (timeLeft / TIME_PER_QUESTION) * 100;
     return (
@@ -184,10 +187,10 @@ export default function Ranked({ screen, onNavigate }) {
     <div style={cardWrap}>
       <TopBar screen="ranked-results" onNavigate={onNavigate} />
       <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 18px", textAlign: "center" }}>Partie terminée</h2>
-      {user && <RankBadge tier={user.rank_tier} points={user.rank_points} />}
+      {user && <RankBadge tier={user.rank_tier} points={user.rank_points} progress={user.rank_progress} />}
       <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
         <Button variant="secondary" onClick={() => onNavigate("home")} style={{ flex: 1 }}>Accueil</Button>
-        <Button onClick={() => setPhase("setup")} style={{ flex: 1 }}>Rejouer</Button>
+        <Button onClick={() => onNavigate("ranked-setup")} style={{ flex: 1 }}>Rejouer</Button>
       </div>
     </div>
   );
