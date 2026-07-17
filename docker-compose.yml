@@ -25,7 +25,7 @@ services:
         # dernière s'est révélée peu fiable (disparaît après certains "Pull
         # and redeploy"). Si le domaine change un jour, modifie cette ligne
         # puis redéploie.
-        VITE_API_BASE_URL: https://noe.crabdance.com
+        VITE_API_BASE_URL: https://quizz.crabdance.com
     container_name: quiz-frontend
     restart: unless-stopped
     ports:
