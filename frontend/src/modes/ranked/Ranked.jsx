@@ -140,7 +140,9 @@ export default function Ranked({ screen, onNavigate }) {
           <li>{rules?.nb_questions || 10} questions, {tpq}s chacune</li>
           <li>Bonne réponse : +{rules?.gain_if_correct ?? "…"} points</li>
           <li>Mauvaise réponse : −{rules?.loss_if_wrong ?? "…"} points à ton rang actuel</li>
-          <li>Passer une question : −{rules?.loss_if_pass ?? "…"} points</li>
+          {rules?.can_pass !== false
+            ? <li>Passer une question : −{rules?.loss_if_pass ?? "…"} points</li>
+            : <li>Passer une question n'est plus autorisé à ton rang</li>}
         </ul>
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
         <Button onClick={start} disabled={loading} style={{ width: "100%" }}>
@@ -171,7 +173,7 @@ export default function Ranked({ screen, onNavigate }) {
 
         <AnswerGrid choix={q.choix} answered={answered === -1 ? -1 : answered} correctIndex={reveal ? reveal.bonne_reponse - 1 : null} onPick={answerQuestion} revealCorrectness={reveal !== null} />
 
-        {answered === null && (
+        {answered === null && rules?.can_pass !== false && (
           <button onClick={pass} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: COLORS.muted, cursor: "pointer", fontWeight: 700, fontSize: 13, margin: "8px auto 0" }}>
             <SkipForward size={14} /> Passer
           </button>

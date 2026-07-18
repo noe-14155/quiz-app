@@ -52,6 +52,10 @@ def submit(payload: DailySubmit, user=Depends(get_current_user_optional)):
         if ok:
             score += 1
         details.append({
+            "question": q["question"],
+            "theme": q["theme"],
+            "choix": q["choix"],
+            "difficulte": q["difficulte"],
             "correct_index": correct_idx,
             "given": given,
             "correct": ok,

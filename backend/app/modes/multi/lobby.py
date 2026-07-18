@@ -38,20 +38,31 @@ def get_room(code: str):
 
 def join_room(code: str, player_name: str):
     conn = get_connection()
-    row = conn.execute("SELECT players, status FROM multi_rooms WHERE code = ?", (code,)).fetchone()
-    if not row:
-        conn.close()
-        return None
-    if row["status"] != "lobby":
-        conn.close()
-        return "started"
-    players = json.loads(row["players"])
-    if player_name not in players:
-        players.append(player_name)
-        conn.execute("UPDATE multi_rooms SET players = ? WHERE code = ?", (json.dumps(players), code))
+    try:
+        # BEGIN IMMEDIATE prend le verrou d'écriture dès le départ : les joins
+        # simultanés (plusieurs joueurs qui rejoignent en même temps) sont alors
+        # sérialisés proprement au lieu de lire tous la même liste puis de
+        # s'écraser mutuellement — c'est ce qui faisait perdre des joueurs et
+        # planter la partie quand on était plusieurs à rejoindre d'un coup.
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT players, status FROM multi_rooms WHERE code = ?", (code,)).fetchone()
+        if not row:
+            conn.rollback()
+            return None
+        if row["status"] != "lobby":
+            conn.rollback()
+            return "started"
+        players = json.loads(row["players"])
+        if player_name not in players:
+            players.append(player_name)
+            conn.execute("UPDATE multi_rooms SET players = ? WHERE code = ?", (json.dumps(players), code))
         conn.commit()
-    conn.close()
-    return "ok"
+        return "ok"
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def update_options(code: str, themes=None, difficulte=None, nb_questions=None):

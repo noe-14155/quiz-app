@@ -54,9 +54,10 @@ def get_rules(user=Depends(get_current_user)):
     settings = get_settings()
     tier = rank_config.tier_from_points(user["rank_points"])
     return {
-        "gain_if_correct": int(settings["ranked_gain_correct"]),
+        "gain_if_correct": rank_config.gain_for_tier(tier),
         "loss_if_wrong": rank_config.loss_for_tier(tier),
-        "loss_if_pass": int(settings["ranked_loss_pass"]),
+        "loss_if_pass": rank_config.loss_for_pass(tier),
+        "can_pass": rank_config.can_pass(user["rank_points"]),
         "time_per_question": int(settings["ranked_time_per_question"]),
         "nb_questions": rank_config.NB_QUESTIONS_PER_PARTY,
     }
@@ -88,9 +89,10 @@ def start_party(user=Depends(get_current_user)):
     return {
         "party_id": party_id,
         "questions": public_questions,
-        "gain_if_correct": gain_correct,
+        "gain_if_correct": rank_config.gain_for_tier(tier),
         "loss_if_wrong": rank_config.loss_for_tier(tier),
-        "loss_if_pass": loss_pass,
+        "loss_if_pass": rank_config.loss_for_pass(tier),
+        "can_pass": rank_config.can_pass(user["rank_points"]),
         "time_per_question": int(settings["ranked_time_per_question"]),
     }
 
@@ -120,10 +122,16 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
     settings = get_settings()
     tier = rank_config.tier_from_points(user["rank_points"])
     if payload.choice is None:
-        delta, result, correct = -int(settings["ranked_loss_pass"]), "passee", False
+        # Passer est interdit à partir de Diamant : on refuse la requête plutôt
+        # que de l'accepter silencieusement (le frontend masque déjà le bouton).
+        if not rank_config.can_pass(user["rank_points"]):
+            conn.close()
+            raise HTTPException(status_code=403, detail="Passer une question n'est plus autorisé à partir de Diamant")
+        delta, result, correct = -rank_config.loss_for_pass(tier), "passee", False
     else:
         correct = payload.choice == question["bonne_reponse"] - 1
-        delta = int(settings["ranked_gain_correct"]) if correct else -rank_config.loss_for_tier(tier)
+        # Gain dégressif avec le rang, malus croissant avec le rang.
+        delta = rank_config.gain_for_tier(tier) if correct else -rank_config.loss_for_tier(tier)
         result = "bonne" if correct else "mauvaise"
 
     new_rank_points = rank_config.apply_delta(user["rank_points"], delta)

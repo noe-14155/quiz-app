@@ -87,7 +87,15 @@ def get_state(code: str):
     conn.close()
 
     if room["status"] == "playing":
-        _maybe_advance(code, room, answers, question_ids)
+        # Blindage : l'avancement automatique (calculs de temps, transitions de
+        # phase) ne doit JAMAIS faire échouer /state. Comme le frontend poll cet
+        # endpoint toutes les 2 s, une room dans un état incohérent générerait
+        # sinon une erreur en boucle, saturant le serveur (symptôme : 500/502 qui
+        # "plante tout le site"). En cas de souci, on renvoie l'état tel quel.
+        try:
+            _maybe_advance(code, room, answers, question_ids)
+        except Exception:
+            pass
         # relit l'état après un éventuel avancement
         conn = get_connection()
         room_row = conn.execute("SELECT * FROM multi_rooms WHERE code = ?", (code,)).fetchone()
@@ -144,7 +152,16 @@ def _maybe_advance(code, room, answers, question_ids):
 def _resolve_round(code, room, answers, question_ids):
     conn = get_connection()
     all_questions = json.loads(room["questions_data"]) if room.get("questions_data") else []
+    # Garde-fous : sans ces vérifications, un index hors limites ou une date de
+    # départ manquante (room en état incohérent) lèverait une exception qui,
+    # répétée à chaque poll /state, ferait tomber le serveur.
+    if room["current_index"] >= len(all_questions):
+        conn.close()
+        return
     question = all_questions[room["current_index"]]
+    if not room["question_started_at"]:
+        conn.close()
+        return
     started = datetime.fromisoformat(room["question_started_at"])
 
     for player in room["players"]:

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.auth.router import get_current_user
 from app.core.db import get_connection
 from app.modes.ranked import rank_config
+from app.modes.ranked.decay import apply_daily_decay
 from app.profile import stats
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
@@ -25,6 +26,11 @@ def _build_profile(user: dict):
 
 @router.get("/me")
 def my_profile(user=Depends(get_current_user)):
+    # Applique la perte quotidienne du mode classé (à partir de Diamant III)
+    # avant d'afficher le profil. Modèle rattrapage : pas de tâche planifiée.
+    updated_points = apply_daily_decay(user["id"], user["rank_points"], user["last_decay_date"] if "last_decay_date" in user.keys() else None)
+    user = dict(user)
+    user["rank_points"] = updated_points
     return {**_build_profile(user), "is_admin": bool(user["is_admin"])}
 
 

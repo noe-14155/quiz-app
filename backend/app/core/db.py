@@ -5,17 +5,32 @@ from app.core.config import DATA_DIR, DB_PATH
 
 
 _data_dir_ready = False
+_wal_enabled = False
 
 
 def get_connection():
     # os.makedirs était appelé à CHAQUE connexion (donc à chaque requête HTTP) :
     # inutile, le dossier ne disparaît pas en cours de route.
-    global _data_dir_ready
+    global _data_dir_ready, _wal_enabled
     if not _data_dir_ready:
         os.makedirs(DATA_DIR, exist_ok=True)
         _data_dir_ready = True
-    conn = sqlite3.connect(DB_PATH)
+    # timeout=10 : si la base est verrouillée par une autre écriture (plusieurs
+    # joueurs multi qui agissent en même temps), on attend jusqu'à 10 s au lieu
+    # de lever immédiatement "database is locked" (qui provoquait des erreurs 500
+    # en cascade quand plusieurs personnes rejoignaient/jouaient simultanément).
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
+    if not _wal_enabled:
+        # WAL : bien meilleur pour les accès concurrents (lecteurs et écrivain
+        # ne se bloquent pas mutuellement). Activé une fois, persistant sur le
+        # fichier de base.
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=10000")
+            _wal_enabled = True
+        except Exception:
+            pass
     return conn
 
 
@@ -142,6 +157,12 @@ def init_schema():
     existing_room_columns = [row["name"] for row in conn.execute("PRAGMA table_info(multi_rooms)").fetchall()]
     if "questions_data" not in existing_room_columns:
         conn.execute("ALTER TABLE multi_rooms ADD COLUMN questions_data TEXT")
+        conn.commit()
+
+    # Migration : date du dernier calcul de la perte quotidienne du mode classé
+    # (à partir de Diamant III). NULL = jamais calculée encore.
+    if "last_decay_date" not in existing_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN last_decay_date TEXT")
         conn.commit()
 
     conn.close()

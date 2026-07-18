@@ -64,13 +64,20 @@ export const RANKS = [
   { name: "Diamant", color: "#6FD3E0" },
   { name: "Légende", color: "#C77DFF" },
 ];
+export const UNREAL = { name: "Unreal", color: "#FF3D68" };
 export const PALIER_LABELS = ["III", "II", "I"];
-export const MAX_TIER = RANKS.length * 3 - 1;
+const NORMAL_TIERS = RANKS.length * 3; // 18 (tiers 0..17), au-delà = Unreal
+export const MAX_TIER = NORMAL_TIERS - 1;
 
 export function tierInfo(tier) {
+  // Au-delà de Légende I (tier 17), on entre dans Unreal, illimité vers le haut.
+  if (tier >= NORMAL_TIERS) {
+    const level = tier - NORMAL_TIERS + 1;
+    return { rank: UNREAL, rankIndex: RANKS.length, palierLabel: String(level), unreal: true };
+  }
   const rankIndex = Math.floor(tier / 3);
   const palierIndex = tier % 3;
-  return { rank: RANKS[rankIndex], rankIndex, palierLabel: PALIER_LABELS[palierIndex] };
+  return { rank: RANKS[rankIndex], rankIndex, palierLabel: PALIER_LABELS[palierIndex], unreal: false };
 }
 
 // cardWrap reste le même objet partout (aucun fichier consommateur à modifier),
