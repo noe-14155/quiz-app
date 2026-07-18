@@ -13,10 +13,13 @@ router = APIRouter(prefix="/api/chill", tags=["chill"])
 
 
 @router.get("/questions")
-def get_chill_questions(themes: str, difficulte_max: int, nb: int = 10, user=Depends(get_current_user_optional)):
+def get_chill_questions(themes: str, difficulte_max: int, nb: int = 10, exact_difficulte: int = 0, user=Depends(get_current_user_optional)):
     if not is_mode_enabled("mode_chill_enabled"):
         raise HTTPException(status_code=403, detail="Le mode chill est temporairement désactivé")
     theme_list = themes.split(",")
+    # exact_difficulte > 0 : ne piocher QUE les questions ayant exactement ce
+    # nombre d'étoiles (mode "difficulté unique" du chill). Sinon, comportement
+    # habituel : toutes les questions jusqu'à difficulte_max.
     # hide_answer=False : le mode chill renvoie la bonne réponse AVEC les
     # questions, ce qui permet d'afficher vert/rouge instantanément au clic,
     # sans attendre un aller-retour réseau.
@@ -26,9 +29,14 @@ def get_chill_questions(themes: str, difficulte_max: int, nb: int = 10, user=Dep
     # volontairement la vérification côté serveur.
     # shuffle_choices réajuste bonne_reponse à l'ordre affiché : l'index reçu
     # correspond donc bien au tableau "choix" du client.
-    questions = questions_service.fetch_questions(
-        themes=theme_list, difficulte_max=difficulte_max, limit=nb, hide_answer=False, allow_repeat=True,
-    )
+    if exact_difficulte and 1 <= exact_difficulte <= 5:
+        questions = questions_service.fetch_questions(
+            themes=theme_list, difficulte=exact_difficulte, limit=nb, hide_answer=False, allow_repeat=True,
+        )
+    else:
+        questions = questions_service.fetch_questions(
+            themes=theme_list, difficulte_max=difficulte_max, limit=nb, hide_answer=False, allow_repeat=True,
+        )
     log_event("chill_start", user_id=user["id"] if user else None,
               pseudo=user["pseudo"] if user else None)
     return {"questions": questions}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
-import { cardWrap, COLORS, FONT_DISPLAY } from "../../design/theme";
+import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY } from "../../design/theme";
 import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
@@ -20,6 +20,7 @@ const THEMES = [
 export default function Chill({ screen, onNavigate }) {
   const [themes, setThemes] = useState(THEMES);
   const [diff, setDiff] = useState(3);
+  const [exactOnly, setExactOnly] = useState(false);
   const [nb, setNb] = useState(10);
   const [pool, setPool] = useState([]);
   const [index, setIndex] = useState(0);
@@ -39,7 +40,8 @@ export default function Chill({ screen, onNavigate }) {
     setError(null);
     try {
       const result = await apiFetch(
-        `/api/chill/questions?themes=${encodeURIComponent(themes.join(","))}&difficulte_max=${diff}&nb=${nb}`
+        `/api/chill/questions?themes=${encodeURIComponent(themes.join(","))}&difficulte_max=${diff}&nb=${nb}` +
+          (exactOnly ? `&exact_difficulte=${diff}` : "")
       );
       // Garde-fou : sans questions, passer à l'écran de quiz planterait le
       // rendu (lecture de pool[0] sur un tableau vide) et l'écran semblerait
@@ -130,6 +132,30 @@ export default function Chill({ screen, onNavigate }) {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={() => setExactOnly((v) => !v)}
+          style={{
+            display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+            background: "none", border: "none", cursor: "pointer", padding: "0 0 20px", fontFamily: FONT_BODY,
+          }}
+        >
+          <span style={{
+            width: 42, height: 24, borderRadius: 999, flexShrink: 0, position: "relative",
+            background: exactOnly ? COLORS.gold : COLORS.cardAlt, transition: "background 0.15s",
+          }}>
+            <span style={{
+              position: "absolute", top: 3, left: exactOnly ? 21 : 3, width: 18, height: 18,
+              borderRadius: "50%", background: "#fff", transition: "left 0.15s",
+            }} />
+          </span>
+          <span style={{ fontSize: 13, color: COLORS.text, fontWeight: 700 }}>
+            Cette difficulté uniquement
+            <span style={{ display: "block", fontSize: 11, color: COLORS.muted, fontWeight: 400 }}>
+              {exactOnly ? `Seulement les questions à ${diff} étoile${diff > 1 ? "s" : ""}` : `Toutes les questions jusqu'à ${diff} étoile${diff > 1 ? "s" : ""}`}
+            </span>
+          </span>
+        </button>
 
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px" }}>
           Questions : <span style={{ color: COLORS.text, fontWeight: 700 }}>{nb}</span>
