@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.auth.router import get_current_user
 from app.core.db import get_connection
 from app.modes.ranked import rank_config
+from app.modes.admin.service import get_settings
 from app.modes.ranked.decay import apply_daily_decay
 from app.profile import stats
 
@@ -10,7 +11,8 @@ router = APIRouter(prefix="/api/profile", tags=["profile"])
 
 
 def _build_profile(user: dict):
-    tier_info = rank_config.tier_info(user["rank_points"])
+    cfg = get_settings()
+    tier_info = rank_config.tier_info(user["rank_points"], cfg)
     return {
         "pseudo": user["pseudo"],
         "xp_total": user["xp_total"],
@@ -19,7 +21,7 @@ def _build_profile(user: dict):
         "rank_tier": tier_info["tier"],
         "rank_name": tier_info["rank"],
         "rank_palier": tier_info["palier"],
-        "rank_progress": rank_config.progress_in_tier(user["rank_points"]),
+        "rank_progress": rank_config.progress_in_tier(user["rank_points"], cfg),
         "stats_by_theme": stats.compute_theme_stats(user["id"]),
     }
 

@@ -17,8 +17,8 @@ from app.modes.admin.service import is_mode_enabled, get_settings
 router = APIRouter(prefix="/api/ranked", tags=["ranked"])
 
 
-def _pick_weighted_questions(tier: int, nb: int):
-    weights = rank_config.weights_for_tier(tier)
+def _pick_weighted_questions(tier: int, nb: int, cfg):
+    weights = rank_config.weights_for_tier(tier, cfg)
     # shuffle=False : on ne mélange que les 10 questions retenues (plus bas),
     # pas les 1114 candidates dont 1104 seront jetées.
     all_questions = questions_service.fetch_questions(
@@ -52,14 +52,21 @@ def get_rules(user=Depends(get_current_user)):
     Le frontend les affiche au lieu de valeurs codées en dur, qui se
     désynchronisaient dès qu'un admin changeait le barème."""
     settings = get_settings()
-    tier = rank_config.tier_from_points(user["rank_points"])
+    cfg = settings
+    tier = rank_config.tier_from_points(user["rank_points"], cfg)
     return {
-        "gain_if_correct": rank_config.gain_for_tier(tier),
-        "loss_if_wrong": rank_config.loss_for_tier(tier),
-        "loss_if_pass": rank_config.loss_for_pass(tier),
-        "can_pass": rank_config.can_pass(user["rank_points"]),
+        "gain_if_correct": rank_config.gain_for_tier(tier, cfg),
+        "loss_if_wrong": rank_config.loss_for_tier(tier, cfg),
+        "loss_if_pass": rank_config.loss_for_pass(tier, cfg),
+        "can_pass": rank_config.can_pass(user["rank_points"], cfg),
         "time_per_question": int(settings["ranked_time_per_question"]),
         "nb_questions": rank_config.NB_QUESTIONS_PER_PARTY,
+        # Tableau complet du barème par rang, pour l'affichage informatif au joueur.
+        "scale": rank_config.full_scale(cfg),
+        "current_rank": rank_config.tier_info(user["rank_points"], cfg)["rank"],
+        "points_per_tier": rank_config.points_per_tier(cfg),
+        "daily_decay": int(cfg.get("ranked_daily_decay", rank_config.DEFAULTS["daily_decay"])),
+        "diamant_floor": rank_config.diamant_floor_points(cfg),
     }
 
 
@@ -68,10 +75,9 @@ def start_party(user=Depends(get_current_user)):
     if not is_mode_enabled("mode_ranked_enabled"):
         raise HTTPException(status_code=403, detail="Le mode classé est temporairement désactivé")
     settings = get_settings()
-    gain_correct = int(settings["ranked_gain_correct"])
-    loss_pass = int(settings["ranked_loss_pass"])
-    tier = rank_config.tier_from_points(user["rank_points"])
-    picked = _pick_weighted_questions(tier, rank_config.NB_QUESTIONS_PER_PARTY)
+    cfg = settings
+    tier = rank_config.tier_from_points(user["rank_points"], cfg)
+    picked = _pick_weighted_questions(tier, rank_config.NB_QUESTIONS_PER_PARTY, cfg)
 
     conn = get_connection()
     cur = conn.cursor()
@@ -89,10 +95,10 @@ def start_party(user=Depends(get_current_user)):
     return {
         "party_id": party_id,
         "questions": public_questions,
-        "gain_if_correct": rank_config.gain_for_tier(tier),
-        "loss_if_wrong": rank_config.loss_for_tier(tier),
-        "loss_if_pass": rank_config.loss_for_pass(tier),
-        "can_pass": rank_config.can_pass(user["rank_points"]),
+        "gain_if_correct": rank_config.gain_for_tier(tier, cfg),
+        "loss_if_wrong": rank_config.loss_for_tier(tier, cfg),
+        "loss_if_pass": rank_config.loss_for_pass(tier, cfg),
+        "can_pass": rank_config.can_pass(user["rank_points"], cfg),
         "time_per_question": int(settings["ranked_time_per_question"]),
     }
 
@@ -120,22 +126,23 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Question introuvable dans cette partie")
 
     settings = get_settings()
-    tier = rank_config.tier_from_points(user["rank_points"])
+    cfg = settings
+    tier = rank_config.tier_from_points(user["rank_points"], cfg)
     if payload.choice is None:
         # Passer est interdit à partir de Diamant : on refuse la requête plutôt
         # que de l'accepter silencieusement (le frontend masque déjà le bouton).
-        if not rank_config.can_pass(user["rank_points"]):
+        if not rank_config.can_pass(user["rank_points"], cfg):
             conn.close()
             raise HTTPException(status_code=403, detail="Passer une question n'est plus autorisé à partir de Diamant")
-        delta, result, correct = -rank_config.loss_for_pass(tier), "passee", False
+        delta, result, correct = -rank_config.loss_for_pass(tier, cfg), "passee", False
     else:
         correct = payload.choice == question["bonne_reponse"] - 1
         # Gain dégressif avec le rang, malus croissant avec le rang.
-        delta = rank_config.gain_for_tier(tier) if correct else -rank_config.loss_for_tier(tier)
+        delta = rank_config.gain_for_tier(tier, cfg) if correct else -rank_config.loss_for_tier(tier, cfg)
         result = "bonne" if correct else "mauvaise"
 
     new_rank_points = rank_config.apply_delta(user["rank_points"], delta)
-    new_tier = rank_config.tier_from_points(new_rank_points)
+    new_tier = rank_config.tier_from_points(new_rank_points, cfg)
     now = datetime.now(timezone.utc).isoformat()
 
     conn.execute("UPDATE users SET rank_tier = ?, rank_points = ? WHERE id = ?", (new_tier, new_rank_points, user["id"]))
@@ -157,7 +164,7 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         "explication": question["explication"],
         "new_tier": new_tier,
         "new_rank_points": new_rank_points,
-        "new_progress": rank_config.progress_in_tier(new_rank_points),
+        "new_progress": rank_config.progress_in_tier(new_rank_points, cfg),
     }
 
 
@@ -165,6 +172,7 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
 def leaderboard(limit: int = 20):
     """Le tri se fait directement sur le cumul de points — un seul critère,
     sans ambiguïté de palier entre deux joueurs proches."""
+    cfg = get_settings()
     conn = get_connection()
     rows = conn.execute(
         "SELECT pseudo, rank_points FROM users ORDER BY rank_points DESC LIMIT ?",
@@ -174,6 +182,6 @@ def leaderboard(limit: int = 20):
     result = []
     for r in rows:
         d = dict(r)
-        d["rank_tier"] = rank_config.tier_from_points(d["rank_points"])
+        d["rank_tier"] = rank_config.tier_from_points(d["rank_points"], cfg)
         result.append(d)
     return {"leaderboard": result}

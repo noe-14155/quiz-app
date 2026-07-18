@@ -8,8 +8,13 @@ import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 const SETTINGS_LABELS = {
-  ranked_gain_correct: "Classé — points gagnés (bonne réponse)",
-  ranked_loss_pass: "Classé — coût de passer une question",
+  ranked_gain_low: "Classé — gain bonne réponse (rang le plus bas, Fer)",
+  ranked_gain_high: "Classé — gain bonne réponse (rang le plus haut, Légende)",
+  ranked_loss_low: "Classé — malus mauvaise réponse (rang le plus bas)",
+  ranked_loss_high: "Classé — malus mauvaise réponse (rang le plus haut)",
+  ranked_loss_pass: "Classé — coût de passer (sous Diamant uniquement)",
+  ranked_points_per_tier: "Classé — points par palier (III→II→I)",
+  ranked_daily_decay: "Classé — perte par jour (dès Diamant III)",
   ranked_time_per_question: "Classé — durée par question (s)",
   multi_time_per_question: "Multi — durée par question (s)",
   multi_reveal_seconds: "Multi — durée de la révélation (s)",
@@ -198,7 +203,7 @@ export default function Admin({ screen, onNavigate }) {
             Réglages globaux
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-            {Object.keys(settings).filter((key) => !MODE_LABELS[key]).map((key) => (
+            {Object.keys(SETTINGS_LABELS).filter((key) => key in settings).map((key) => (
               <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <label style={{ fontSize: 13, color: COLORS.text, fontFamily: FONT_BODY, flex: 1 }}>
                   {SETTINGS_LABELS[key] || key}

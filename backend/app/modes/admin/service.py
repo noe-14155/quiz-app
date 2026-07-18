@@ -6,8 +6,15 @@ from app.core.db import get_connection
 from app.profile.activity import EVENTS as EVENT_LABELS
 
 DEFAULT_SETTINGS = {
-    "ranked_gain_correct": "12",
-    "ranked_loss_pass": "3",
+    # Barème du mode classé : bornes de la courbe (le code interpole entre le
+    # bas et le haut du classement). Voir rank_config.py.
+    "ranked_gain_low": "25",       # gain d'une bonne réponse au rang le plus bas (Fer)
+    "ranked_gain_high": "6",       # gain au rang le plus haut (Légende I) ; plancher en Unreal
+    "ranked_loss_low": "6",        # malus d'une mauvaise réponse au plus bas
+    "ranked_loss_high": "22",      # malus au plus haut (Légende I) ; augmente encore en Unreal
+    "ranked_loss_pass": "3",       # coût d'un « passer » (uniquement sous Diamant, où c'est permis)
+    "ranked_points_per_tier": "200",  # points par palier (III→II→I)
+    "ranked_daily_decay": "50",    # perte quotidienne à partir de Diamant III
     "ranked_time_per_question": "15",
     "multi_time_per_question": "15",
     "multi_reveal_seconds": "5",

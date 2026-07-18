@@ -138,12 +138,49 @@ export default function Ranked({ screen, onNavigate }) {
         {user && <RankBadge tier={user.rank_tier} points={user.rank_points} progress={user.rank_progress} />}
         <ul style={{ fontSize: 13, color: COLORS.muted, margin: "20px 0", paddingLeft: 18, lineHeight: 1.8 }}>
           <li>{rules?.nb_questions || 10} questions, {tpq}s chacune</li>
-          <li>Bonne réponse : +{rules?.gain_if_correct ?? "…"} points</li>
+          <li>Bonne réponse : +{rules?.gain_if_correct ?? "…"} points à ton rang actuel</li>
           <li>Mauvaise réponse : −{rules?.loss_if_wrong ?? "…"} points à ton rang actuel</li>
           {rules?.can_pass !== false
             ? <li>Passer une question : −{rules?.loss_if_pass ?? "…"} points</li>
             : <li>Passer une question n'est plus autorisé à ton rang</li>}
         </ul>
+
+        {rules?.scale && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 12, color: COLORS.muted, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Barème par rang
+            </p>
+            <div style={{ background: COLORS.card, borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", padding: "8px 12px", fontSize: 11, fontWeight: 700, color: COLORS.muted, borderBottom: `1px solid ${COLORS.cardAlt}` }}>
+                <span>Rang</span>
+                <span style={{ textAlign: "right", color: COLORS.success }}>Bonne</span>
+                <span style={{ textAlign: "right", color: COLORS.danger }}>Mauvaise</span>
+                <span style={{ textAlign: "center" }}>Passer</span>
+              </div>
+              {rules.scale.map((row) => {
+                const isCurrent = rules.current_rank ? row.rank === rules.current_rank : false;
+                return (
+                  <div key={row.rank} style={{
+                    display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", padding: "7px 12px", fontSize: 12,
+                    borderBottom: `1px solid ${COLORS.cardAlt}`,
+                    background: isCurrent ? "rgba(59,130,246,0.10)" : "transparent",
+                  }}>
+                    <span style={{ fontWeight: 700, color: COLORS.text }}>{row.rank}</span>
+                    <span style={{ textAlign: "right", color: COLORS.success, fontWeight: 700 }}>+{row.gain}</span>
+                    <span style={{ textAlign: "right", color: COLORS.danger, fontWeight: 700 }}>−{row.loss}</span>
+                    <span style={{ textAlign: "center", color: row.can_pass ? COLORS.muted : COLORS.danger }}>
+                      {row.can_pass ? "✓" : "✕"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p style={{ fontSize: 11, color: COLORS.muted, margin: "8px 2px 0", lineHeight: 1.5 }}>
+              Plus tu montes, moins tu gagnes et plus tu perds. Passer devient impossible à partir de Diamant.
+              {rules.daily_decay ? ` À partir de Diamant III, tu perds ${rules.daily_decay} points par jour d'inactivité (sans jamais retomber sous Diamant).` : ""}
+            </p>
+          </div>
+        )}
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
         <Button onClick={start} disabled={loading} style={{ width: "100%" }}>
           {loading ? "Chargement..." : "Lancer une partie classée"}
