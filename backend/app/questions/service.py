@@ -71,14 +71,19 @@ def _row_to_dict(row):
     }
 
 
-def shuffle_choices(question):
+def shuffle_choices(question, seed=None):
     """Mélange l'ordre des 4 réponses, en réajustant l'index de la bonne réponse.
 
     Corrige le biais observé initialement dans le prototype (la bonne
     réponse se retrouvait trop souvent en première position).
+
+    seed : si fourni, le mélange est déterministe et reproductible (utilisé par
+    le défi quotidien pour que tous les joueurs voient le même ordre). Sans
+    seed, mélange aléatoire habituel — aucun changement pour les autres modes.
     """
+    rng = random.Random(seed) if seed is not None else random
     order = list(range(4))
-    random.shuffle(order)
+    rng.shuffle(order)
     choix = [question["choix"][i] for i in order]
     bonne = order.index(question["bonne_reponse"] - 1) + 1
     return {**question, "choix": choix, "bonne_reponse": bonne}

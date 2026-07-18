@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, Trophy, Lock } from "lucide-react";
+import { Users, Trophy, Lock, CalendarDays } from "lucide-react";
 import { COLORS, FONT_DISPLAY, cardWrap, tierInfo } from "./design/theme";
 import TopBar from "./components/TopBar";
 import Button from "./components/Button";
@@ -53,7 +53,7 @@ function ModeCard({ icon, title, description, enabled, children }) {
 export default function Home({ screen, onNavigate }) {
   const { user } = useAuth();
   const [modes, setModes] = useState({
-    mode_chill_enabled: true, mode_ranked_enabled: true, mode_local_enabled: true, mode_multi_enabled: true,
+    mode_chill_enabled: true, mode_ranked_enabled: true, mode_local_enabled: true, mode_multi_enabled: true, mode_daily_enabled: true,
   });
 
   useEffect(() => {
@@ -67,6 +67,20 @@ export default function Home({ screen, onNavigate }) {
       <p style={{ color: COLORS.muted, margin: "0 0 24px", fontSize: 14 }}>Choisis un mode de jeu.</p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {modes.mode_daily_enabled !== false && (
+          <button onClick={() => onNavigate("daily")} style={{
+            display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", cursor: "pointer",
+            background: `linear-gradient(135deg, ${COLORS.gold}, ${COLORS.gold}cc)`,
+            border: "none", borderRadius: 16, padding: 18, marginBottom: 4,
+          }}>
+            <CalendarDays size={30} color="#fff" style={{ flexShrink: 0 }} />
+            <div>
+              <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 700, margin: 0, color: "#fff" }}>Défi du jour</p>
+              <p style={{ fontSize: 13, margin: "2px 0 0", color: "rgba(255,255,255,0.9)" }}>10 questions, les mêmes pour tous. Reviens chaque jour !</p>
+            </div>
+          </button>
+        )}
+
         <ModeCard title="Mode chill" description="Sans timer, à ton rythme." enabled={modes.mode_chill_enabled}>
           <Button onClick={() => onNavigate("chill-setup")}>Jouer</Button>
         </ModeCard>

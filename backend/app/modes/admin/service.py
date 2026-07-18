@@ -15,9 +15,10 @@ DEFAULT_SETTINGS = {
     "mode_ranked_enabled": "1",
     "mode_local_enabled": "1",
     "mode_multi_enabled": "1",
+    "mode_daily_enabled": "1",
 }
 
-MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_multi_enabled"]
+MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_multi_enabled", "mode_daily_enabled"]
 
 
 # Cache mémoire des réglages : is_mode_enabled() est appelé sur CHAQUE requête

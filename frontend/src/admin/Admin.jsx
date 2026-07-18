@@ -20,6 +20,7 @@ const MODE_LABELS = {
   mode_ranked_enabled: "Mode Classé",
   mode_local_enabled: "Mode Local",
   mode_multi_enabled: "Mode Multi",
+  mode_daily_enabled: "Défi du jour",
 };
 
 export default function Admin({ screen, onNavigate }) {

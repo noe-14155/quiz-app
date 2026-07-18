@@ -40,6 +40,16 @@ def init_schema():
             created_at TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS daily_attempts (
+            date TEXT NOT NULL,
+            pseudo TEXT NOT NULL,
+            user_id INTEGER,
+            score INTEGER NOT NULL,
+            total INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (date, pseudo)
+        );
+
         CREATE TABLE IF NOT EXISTS activity_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -149,6 +159,7 @@ def create_indexes():
         CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
         CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
         CREATE INDEX IF NOT EXISTS idx_activity_event ON activity_log(event);
+        CREATE INDEX IF NOT EXISTS idx_daily_date ON daily_attempts(date);
     """)
     conn.commit()
     conn.close()

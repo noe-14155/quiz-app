@@ -10,6 +10,7 @@ import LocalChoice from "./modes/local/LocalChoice";
 import Mise from "./modes/local/games/Mise";
 import QuestionsMode from "./modes/local/games/QuestionsMode";
 import Multi from "./modes/multi/Multi";
+import Daily from "./modes/daily/Daily";
 import { Profile, PublicProfile } from "./profile/Profile";
 import Admin from "./admin/Admin";
 
@@ -37,6 +38,7 @@ function Router() {
   if (screen === "leaderboard") return <Leaderboard screen={screen} onNavigate={navigate} onViewProfile={viewProfile} />;
 
   if (screen === "local-choice") return <LocalChoice screen={screen} onNavigate={navigate} />;
+  if (screen === "daily") return <Daily screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("mise-")) return <Mise screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("questions-mode-")) return <QuestionsMode screen={screen} onNavigate={navigate} />;
 

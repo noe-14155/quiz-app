@@ -22,6 +22,7 @@ EVENTS = {
     "ranked_start": "Partie classée",
     "local_start": "Partie locale",
     "multi_create": "Partie multi créée",
+    "daily_start": "Défi du jour",
 }
 
 
