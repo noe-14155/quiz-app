@@ -20,6 +20,7 @@ export default function Daily({ screen, onNavigate }) {
   const [result, setResult] = useState(null); // résultat final après soumission
   const [timeLeft, setTimeLeft] = useState(TIME_PER_QUESTION);
   const answeredRef = useRef(false);
+  const goNextRef = useRef(() => {});
 
   useEffect(() => {
     apiFetch("/api/daily/today").then((d) => {
@@ -27,6 +28,29 @@ export default function Daily({ screen, onNavigate }) {
       setAnswers(new Array(d.questions ? d.questions.length : 0).fill(null));
     }).catch((e) => setError(e.message));
   }, []);
+
+  // Décompte par question. DOIT rester ici, en haut du composant avec les autres
+  // hooks : placé après un `return` conditionnel, il violait la règle des hooks
+  // de React et faisait planter la page (écran blanc). Il ne fait rien tant
+  // qu'on n'est pas en phase de jeu (pas de data, déjà joué, ou résultat affiché).
+  useEffect(() => {
+    if (!data || result || data.already_played || !data.questions) return;
+    setTimeLeft(TIME_PER_QUESTION);
+    answeredRef.current = false;
+    const started = Date.now();
+    const t = setInterval(() => {
+      const remaining = TIME_PER_QUESTION - Math.floor((Date.now() - started) / 1000);
+      setTimeLeft(Math.max(0, remaining));
+      if (remaining <= 0) {
+        clearInterval(t);
+        if (!answeredRef.current) {
+          goNextRef.current(); // temps écoulé sans réponse : on avance
+        }
+      }
+    }, 250);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, data, result]);
 
   if (error) return (
     <div style={cardWrap}><TopBar screen={screen} onNavigate={onNavigate} />
@@ -138,28 +162,6 @@ export default function Daily({ screen, onNavigate }) {
   // --- Jeu ---
   const q = data.questions[index];
 
-  // Décompte par question : à 0, la question est considérée non répondue et on
-  // passe automatiquement à la suivante (comme le mode classé).
-  useEffect(() => {
-    if (result || data.already_played || !data.questions) return;
-    setTimeLeft(TIME_PER_QUESTION);
-    answeredRef.current = false;
-    const started = Date.now();
-    const t = setInterval(() => {
-      const remaining = TIME_PER_QUESTION - Math.floor((Date.now() - started) / 1000);
-      setTimeLeft(Math.max(0, remaining));
-      if (remaining <= 0) {
-        clearInterval(t);
-        if (!answeredRef.current) {
-          // temps écoulé sans réponse : on enregistre "pas de réponse" et on avance
-          goNext();
-        }
-      }
-    }, 250);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, data]);
-
   function pick(choiceIdx) {
     if (answered !== null) return;
     answeredRef.current = true;
@@ -184,6 +186,10 @@ export default function Daily({ screen, onNavigate }) {
   }
 
   const timePct = (timeLeft / TIME_PER_QUESTION) * 100;
+
+  // Le timer (déclaré en haut) appelle goNext via cette ref, car goNext est
+  // défini ici, après les hooks. On garde la ref à jour à chaque rendu.
+  goNextRef.current = goNext;
 
   return (
     <div style={cardWrap}>
