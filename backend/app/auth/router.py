@@ -4,6 +4,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from app.auth import service
+from app.profile.activity import log_event
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -19,6 +20,7 @@ def register(payload: Credentials):
     if user_id is None:
         raise HTTPException(status_code=409, detail="Ce pseudo est déjà pris")
     token = service.create_session(user_id)
+    log_event("register", user_id=user_id, pseudo=payload.pseudo)
     return {"token": token, "pseudo": payload.pseudo}
 
 
@@ -28,6 +30,7 @@ def login(payload: Credentials):
     if not user:
         raise HTTPException(status_code=401, detail="Pseudo ou mot de passe incorrect")
     token = service.create_session(user["id"])
+    log_event("login", user_id=user["id"], pseudo=user["pseudo"])
     return {"token": token, "pseudo": user["pseudo"]}
 
 

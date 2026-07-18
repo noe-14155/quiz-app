@@ -57,6 +57,12 @@ def get_stats(admin=Depends(get_current_admin)):
     return service.get_stats()
 
 
+@router.get("/activity")
+def get_activity(days: int = 14, admin=Depends(get_current_admin)):
+    """Page de suivi : connexions, flux par mode, joueurs, derniers événements."""
+    return service.get_activity(days=days)
+
+
 # Note : le statut public des modes est exposé par /api/modes/status (main.py),
 # et l'activation/désactivation se fait via PATCH /api/admin/settings — pas
 # besoin d'endpoints dédiés supplémentaires ici.

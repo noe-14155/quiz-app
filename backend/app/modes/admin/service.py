@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from app.core.config import ADMIN_BOOTSTRAP_SECRET
 from app.core.db import get_connection
+from app.profile.activity import EVENTS as EVENT_LABELS
 
 DEFAULT_SETTINGS = {
     "ranked_gain_correct": "12",
@@ -122,3 +123,71 @@ def get_stats():
     nb_rooms = conn.execute("SELECT COUNT(*) as c FROM multi_rooms").fetchone()["c"]
     conn.close()
     return {"nb_comptes": nb_users, "nb_parties_classees": nb_parties, "nb_parties_multi": nb_rooms}
+
+
+# ---------------------------------------------------------------------------
+# Suivi des connexions et des flux
+# ---------------------------------------------------------------------------
+
+def get_activity(days: int = 14, feed_limit: int = 40):
+    """Alimente la page de suivi de l'administration.
+
+    Note : les connexions historiques viennent de `sessions` (chaque login y
+    crée une ligne, et rien ne les supprime), ce qui donne un historique
+    complet même antérieur à l'ajout d'activity_log.
+    """
+    conn = get_connection()
+
+    # Connexions par jour (source : sessions, la plus ancienne et la plus fiable)
+    logins_par_jour = conn.execute(
+        "SELECT substr(created_at, 1, 10) AS jour, COUNT(*) AS n FROM sessions "
+        "WHERE created_at >= date('now', ?) GROUP BY jour ORDER BY jour",
+        (f"-{days} days",),
+    ).fetchall()
+
+    # Inscriptions par jour
+    inscriptions_par_jour = conn.execute(
+        "SELECT substr(created_at, 1, 10) AS jour, COUNT(*) AS n FROM users "
+        "WHERE created_at >= date('now', ?) GROUP BY jour ORDER BY jour",
+        (f"-{days} days",),
+    ).fetchall()
+
+    # Répartition par mode (source : activity_log)
+    par_mode = conn.execute(
+        "SELECT event, COUNT(*) AS n FROM activity_log "
+        "WHERE event LIKE '%_start' OR event = 'multi_create' GROUP BY event ORDER BY n DESC"
+    ).fetchall()
+
+    # Derniers événements
+    feed = conn.execute(
+        "SELECT event, pseudo, created_at FROM activity_log ORDER BY id DESC LIMIT ?",
+        (feed_limit,),
+    ).fetchall()
+
+    # Joueurs : dernière connexion + nombre de connexions
+    joueurs = conn.execute(
+        "SELECT u.pseudo, COUNT(s.token) AS nb_connexions, MAX(s.created_at) AS derniere_connexion "
+        "FROM users u LEFT JOIN sessions s ON s.user_id = u.id "
+        "GROUP BY u.id ORDER BY derniere_connexion DESC NULLS LAST"
+    ).fetchall()
+
+    totaux = {
+        "connexions_total": conn.execute("SELECT COUNT(*) c FROM sessions").fetchone()["c"],
+        "connexions_7j": conn.execute(
+            "SELECT COUNT(*) c FROM sessions WHERE created_at >= date('now', '-7 days')"
+        ).fetchone()["c"],
+        "joueurs_actifs_7j": conn.execute(
+            "SELECT COUNT(DISTINCT user_id) c FROM sessions WHERE created_at >= date('now', '-7 days')"
+        ).fetchone()["c"],
+        "evenements_total": conn.execute("SELECT COUNT(*) c FROM activity_log").fetchone()["c"],
+    }
+    conn.close()
+
+    return {
+        "totaux": totaux,
+        "logins_par_jour": [dict(r) for r in logins_par_jour],
+        "inscriptions_par_jour": [dict(r) for r in inscriptions_par_jour],
+        "par_mode": [{"event": r["event"], "label": EVENT_LABELS.get(r["event"], r["event"]), "n": r["n"]} for r in par_mode],
+        "feed": [{"event": r["event"], "label": EVENT_LABELS.get(r["event"], r["event"]), "pseudo": r["pseudo"], "created_at": r["created_at"]} for r in feed],
+        "joueurs": [dict(r) for r in joueurs],
+    }

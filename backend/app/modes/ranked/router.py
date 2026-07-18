@@ -11,7 +11,8 @@ from app.core.db import get_connection
 from app.questions import service as questions_service
 from app.modes.ranked import rank_config
 from app.profile.xp import xp_for_difficulty, award_xp
-from app.modes.admin.service import is_mode_enabled
+from app.profile.activity import log_event
+from app.modes.admin.service import is_mode_enabled, get_settings
 
 router = APIRouter(prefix="/api/ranked", tags=["ranked"])
 
@@ -45,10 +46,29 @@ def _pick_weighted_questions(tier: int, nb: int):
     return picked
 
 
+@router.get("/rules")
+def get_rules(user=Depends(get_current_user)):
+    """Les règles réellement appliquées, lues des réglages d'administration.
+    Le frontend les affiche au lieu de valeurs codées en dur, qui se
+    désynchronisaient dès qu'un admin changeait le barème."""
+    settings = get_settings()
+    tier = rank_config.tier_from_points(user["rank_points"])
+    return {
+        "gain_if_correct": int(settings["ranked_gain_correct"]),
+        "loss_if_wrong": rank_config.loss_for_tier(tier),
+        "loss_if_pass": int(settings["ranked_loss_pass"]),
+        "time_per_question": int(settings["ranked_time_per_question"]),
+        "nb_questions": rank_config.NB_QUESTIONS_PER_PARTY,
+    }
+
+
 @router.post("/start")
 def start_party(user=Depends(get_current_user)):
     if not is_mode_enabled("mode_ranked_enabled"):
         raise HTTPException(status_code=403, detail="Le mode classé est temporairement désactivé")
+    settings = get_settings()
+    gain_correct = int(settings["ranked_gain_correct"])
+    loss_pass = int(settings["ranked_loss_pass"])
     tier = rank_config.tier_from_points(user["rank_points"])
     picked = _pick_weighted_questions(tier, rank_config.NB_QUESTIONS_PER_PARTY)
 
@@ -62,13 +82,16 @@ def start_party(user=Depends(get_current_user)):
     conn.commit()
     conn.close()
 
+    log_event("ranked_start", user_id=user["id"], pseudo=user["pseudo"])
+
     public_questions = [{k: v for k, v in q.items() if k not in ("bonne_reponse", "explication")} for q in picked]
     return {
         "party_id": party_id,
         "questions": public_questions,
-        "gain_if_correct": rank_config.GAIN_CORRECT,
+        "gain_if_correct": gain_correct,
         "loss_if_wrong": rank_config.loss_for_tier(tier),
-        "loss_if_pass": rank_config.LOSS_PASS,
+        "loss_if_pass": loss_pass,
+        "time_per_question": int(settings["ranked_time_per_question"]),
     }
 
 
@@ -94,12 +117,13 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         conn.close()
         raise HTTPException(status_code=404, detail="Question introuvable dans cette partie")
 
+    settings = get_settings()
     tier = rank_config.tier_from_points(user["rank_points"])
     if payload.choice is None:
-        delta, result, correct = -rank_config.LOSS_PASS, "passee", False
+        delta, result, correct = -int(settings["ranked_loss_pass"]), "passee", False
     else:
         correct = payload.choice == question["bonne_reponse"] - 1
-        delta = rank_config.GAIN_CORRECT if correct else -rank_config.loss_for_tier(tier)
+        delta = int(settings["ranked_gain_correct"]) if correct else -rank_config.loss_for_tier(tier)
         result = "bonne" if correct else "mauvaise"
 
     new_rank_points = rank_config.apply_delta(user["rank_points"], delta)

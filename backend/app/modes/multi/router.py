@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from app.modes.multi import lobby, sync
 from app.modes.admin.service import is_mode_enabled
+from app.profile.activity import log_event
 
 router = APIRouter(prefix="/api/multi", tags=["multi"])
 
@@ -32,7 +33,9 @@ class AnswerPayload(BaseModel):
 def create_room(payload: CreateRoomPayload):
     if not is_mode_enabled("mode_multi_enabled"):
         raise HTTPException(status_code=403, detail="Le mode multi est temporairement désactivé")
-    return {"code": lobby.create_room(payload.host_name)}
+    code = lobby.create_room(payload.host_name)
+    log_event("multi_create", pseudo=payload.host_name)
+    return {"code": code}
 
 
 @router.get("/{code}")

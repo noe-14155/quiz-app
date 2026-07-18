@@ -40,6 +40,14 @@ def init_schema():
             created_at TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            pseudo TEXT,
+            event TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS app_settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -139,6 +147,8 @@ def create_indexes():
         CREATE INDEX IF NOT EXISTS idx_questions_difficulte ON questions(difficulte);
         CREATE INDEX IF NOT EXISTS idx_results_user ON question_results(user_id);
         CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+        CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
+        CREATE INDEX IF NOT EXISTS idx_activity_event ON activity_log(event);
     """)
     conn.commit()
     conn.close()

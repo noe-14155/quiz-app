@@ -4,11 +4,22 @@ from datetime import datetime, timezone
 from app.core.db import get_connection
 from app.questions import service as questions_service
 from app.profile.xp import xp_for_difficulty, award_xp_by_pseudo
+from app.modes.admin.service import get_settings
 
-TIME_PER_QUESTION = 15
-ROUND_REVEAL_SECONDS = 5
 BASE_POINTS = 5
 SPEED_BONUS_MAX = 5
+
+
+# Ces durées étaient des constantes figées : les modifier depuis la page
+# d'administration n'avait donc aucun effet. Elles sont désormais lues à
+# chaque usage depuis les réglages (get_settings est mis en cache mémoire,
+# donc ça ne coûte pas une requête SQL à chaque appel).
+def time_per_question() -> int:
+    return int(get_settings()["multi_time_per_question"])
+
+
+def reveal_seconds() -> int:
+    return int(get_settings()["multi_reveal_seconds"])
 
 
 def start_game(code: str):
@@ -102,7 +113,17 @@ def get_state(code: str):
     scores = {r["player_name"]: r["score"] for r in scores_rows}
     conn.close()
 
-    return {"room": room, "current_question": current_question, "answers": answers, "scores": scores}
+    return {
+        "room": room,
+        "current_question": current_question,
+        "answers": answers,
+        "scores": scores,
+        # Durées transmises au client : sans ça, sa barre de temps utilisait ses
+        # propres constantes figées et se désynchronisait dès qu'un admin
+        # changeait les réglages.
+        "time_per_question": time_per_question(),
+        "reveal_seconds": reveal_seconds(),
+    }
 
 
 def _maybe_advance(code, room, answers, question_ids):
@@ -111,12 +132,12 @@ def _maybe_advance(code, room, answers, question_ids):
         started = datetime.fromisoformat(room["question_started_at"])
         elapsed = (now - started).total_seconds()
         all_answered = len(room["players"]) > 0 and all(p in answers for p in room["players"])
-        if elapsed >= TIME_PER_QUESTION or all_answered:
+        if elapsed >= time_per_question() or all_answered:
             _resolve_round(code, room, answers, question_ids)
     elif room["phase"] == "reveal" and room["reveal_started_at"]:
         started = datetime.fromisoformat(room["reveal_started_at"])
         elapsed = (now - started).total_seconds()
-        if elapsed >= ROUND_REVEAL_SECONDS:
+        if elapsed >= reveal_seconds():
             _advance_question(code, room, question_ids)
 
 
@@ -131,8 +152,9 @@ def _resolve_round(code, room, answers, question_ids):
         points = 0
         if a and a["choice"] == question["bonne_reponse"] - 1:
             answered_at = datetime.fromisoformat(a["answered_at"])
-            elapsed = max(0, min(TIME_PER_QUESTION, (answered_at - started).total_seconds()))
-            bonus = SPEED_BONUS_MAX * (1 - elapsed / TIME_PER_QUESTION)
+            tpq = time_per_question()
+            elapsed = max(0, min(tpq, (answered_at - started).total_seconds()))
+            bonus = SPEED_BONUS_MAX * (1 - elapsed / tpq)
             points = round(BASE_POINTS + bonus)
             # Attribue de l'XP si ce nom de joueur correspond à un vrai compte
             # (le multi n'exige pas d'être connecté, donc ce n'est pas toujours le cas).

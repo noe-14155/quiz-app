@@ -14,9 +14,9 @@ const THEMES = [
   "Anecdotes", "Sciences & Nature", "Sport", "Art & Littérature", "Gastronomie", "Technologie & Internet",
 ];
 const POLL_MS = 2000;
-// Doivent rester alignées sur backend/app/modes/multi/sync.py
-const TIME_PER_QUESTION = 15;
-const REVEAL_SECONDS = 5;
+// Valeurs de repli uniquement : les durées réelles viennent du serveur
+// (state.time_per_question), qui les lit des réglages d'administration.
+const DEFAULT_TIME_PER_QUESTION = 15;
 
 export default function Multi({ screen, onNavigate }) {
   const { user } = useAuth();
@@ -274,8 +274,9 @@ export default function Multi({ screen, onNavigate }) {
 
     const startedAt = state.room.question_started_at ? Date.parse(state.room.question_started_at) : null;
     const elapsed = startedAt ? (now - startedAt) / 1000 : 0;
-    const timeLeft = Math.max(0, Math.ceil(TIME_PER_QUESTION - elapsed));
-    const timePct = Math.max(0, Math.min(100, ((TIME_PER_QUESTION - elapsed) / TIME_PER_QUESTION) * 100));
+    const tpq = state.time_per_question || DEFAULT_TIME_PER_QUESTION;
+    const timeLeft = Math.max(0, Math.ceil(tpq - elapsed));
+    const timePct = Math.max(0, Math.min(100, ((tpq - elapsed) / tpq) * 100));
 
     // Qui a trouvé : pendant la révélation, la bonne réponse est connue, donc
     // on peut distinguer trouvé / raté / pas répondu plutôt qu'un simple

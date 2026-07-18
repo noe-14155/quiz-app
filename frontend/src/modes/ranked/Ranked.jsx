@@ -9,7 +9,9 @@ import SearchLink from "../../components/SearchLink";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 
-const TIME_PER_QUESTION = 15;
+// Repli uniquement : les vraies valeurs viennent du serveur (/api/ranked/rules),
+// qui les lit des réglages d'administration.
+const DEFAULT_TIME_PER_QUESTION = 15;
 
 function RankBadge({ tier, points, progress }) {
   const t = tierInfo(tier);
@@ -37,11 +39,19 @@ export default function Ranked({ screen, onNavigate }) {
   const [index, setIndex] = useState(0);
   const [answered, setAnswered] = useState(null);
   const [reveal, setReveal] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(TIME_PER_QUESTION);
+  const [rules, setRules] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME_PER_QUESTION);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [quitOpen, setQuitOpen] = useState(false);
   const timerRef = useRef(null);
+  const tpq = rules?.time_per_question || DEFAULT_TIME_PER_QUESTION;
+
+  // Charge les règles réellement appliquées dès l'écran de présentation.
+  useEffect(() => {
+    if (screen !== "ranked-setup" || !user) return;
+    apiFetch("/api/ranked/rules").then(setRules).catch(() => {});
+  }, [screen, user]);
 
   useEffect(() => {
     if (phase !== "quiz" || answered !== null) {
@@ -72,7 +82,7 @@ export default function Ranked({ screen, onNavigate }) {
       setIndex(0);
       setAnswered(null);
       setReveal(null);
-      setTimeLeft(TIME_PER_QUESTION);
+      setTimeLeft(result.time_per_question || DEFAULT_TIME_PER_QUESTION);
       setPhase("quiz");
       onNavigate("ranked-quiz");
     } catch (e) {
@@ -110,7 +120,7 @@ export default function Ranked({ screen, onNavigate }) {
       setIndex((i) => i + 1);
       setAnswered(null);
       setReveal(null);
-      setTimeLeft(TIME_PER_QUESTION);
+      setTimeLeft(tpq);
     }
   }
 
@@ -127,10 +137,10 @@ export default function Ranked({ screen, onNavigate }) {
         <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 16px" }}>Mode classé</h2>
         {user && <RankBadge tier={user.rank_tier} points={user.rank_points} progress={user.rank_progress} />}
         <ul style={{ fontSize: 13, color: COLORS.muted, margin: "20px 0", paddingLeft: 18, lineHeight: 1.8 }}>
-          <li>10 questions, {TIME_PER_QUESTION}s chacune</li>
-          <li>Bonne réponse : +12 points</li>
-          <li>Mauvaise réponse : le malus augmente avec ton rang</li>
-          <li>Passer une question coûte moins cher qu'une mauvaise réponse</li>
+          <li>{rules?.nb_questions || 10} questions, {tpq}s chacune</li>
+          <li>Bonne réponse : +{rules?.gain_if_correct ?? "…"} points</li>
+          <li>Mauvaise réponse : −{rules?.loss_if_wrong ?? "…"} points à ton rang actuel</li>
+          <li>Passer une question : −{rules?.loss_if_pass ?? "…"} points</li>
         </ul>
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
         <Button onClick={start} disabled={loading} style={{ width: "100%" }}>
@@ -142,7 +152,7 @@ export default function Ranked({ screen, onNavigate }) {
 
   if (screen === "ranked-quiz") {
     const q = pool[index];
-    const timePct = (timeLeft / TIME_PER_QUESTION) * 100;
+    const timePct = (timeLeft / tpq) * 100;
     return (
       <div style={cardWrap}>
         {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={quitToHome} />}

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from app.modes.local.games import mise, questions_mode
 from app.modes.local.registry import LOCAL_GAMES
 from app.modes.admin.service import is_mode_enabled
+from app.profile.activity import log_event
 
 router = APIRouter(prefix="/api/local", tags=["local"])
 
@@ -15,6 +16,7 @@ def _parse_exclude(exclude_ids: Optional[str]):
 
 @router.get("/games")
 def list_games():
+    log_event("local_start")
     return {"games": LOCAL_GAMES}
 
 

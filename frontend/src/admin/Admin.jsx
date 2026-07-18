@@ -3,6 +3,7 @@ import { Trash2, RotateCcw } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY } from "../design/theme";
 import TopBar from "../components/TopBar";
 import Button from "../components/Button";
+import Activity from "./Activity";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
@@ -29,6 +30,7 @@ export default function Admin({ screen, onNavigate }) {
   const [settings, setSettings] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("gestion");
 
   async function loadAll() {
     setLoading(true);
@@ -98,8 +100,23 @@ export default function Admin({ screen, onNavigate }) {
   return (
     <div style={cardWrap}>
       <TopBar screen={screen} onNavigate={onNavigate} />
-      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>Administration</h2>
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 16px" }}>Administration</h2>
 
+      <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+        {[["gestion", "Gestion"], ["suivi", "Suivi"]].map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)} style={{
+            flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+            fontFamily: FONT_BODY,
+            border: tab === id ? `2px solid ${COLORS.gold}` : `2px solid ${COLORS.cardAlt}`,
+            background: tab === id ? "rgba(59,130,246,0.12)" : "transparent",
+            color: tab === id ? COLORS.gold : COLORS.text,
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {tab === "suivi" && <Activity />}
+
+      {tab === "gestion" && <>
       {loading && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement...</p>}
       {error && <p style={{ color: COLORS.danger, fontSize: 13, marginBottom: 16 }}>{error}</p>}
 
@@ -196,6 +213,7 @@ export default function Admin({ screen, onNavigate }) {
           <Button onClick={saveSettings} style={{ width: "100%" }}>Enregistrer les réglages</Button>
         </>
       )}
+      </>}
     </div>
   );
 }
