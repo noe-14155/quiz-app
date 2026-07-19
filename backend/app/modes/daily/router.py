@@ -18,16 +18,49 @@ def _require_enabled():
         raise HTTPException(status_code=403, detail="Le défi du jour est temporairement désactivé")
 
 
+def _build_details(full, answers):
+    """Construit le détail question par question à partir des réponses données.
+    Partagé entre submit (à chaud) et today (revoir ses réponses plus tard)."""
+    details = []
+    score = 0
+    for i, q in enumerate(full):
+        correct_idx = q["bonne_reponse"] - 1
+        given = answers[i] if answers and i < len(answers) else None
+        ok = given == correct_idx
+        if ok:
+            score += 1
+        details.append({
+            "question": q["question"],
+            "theme": q["theme"],
+            "choix": q["choix"],
+            "difficulte": q["difficulte"],
+            "correct_index": correct_idx,
+            "given": given,
+            "correct": ok,
+            "explication": q["explication"],
+        })
+    return details, score
+
+
 @router.get("/today")
 def today(user=Depends(get_current_user_optional)):
     """État du défi du jour pour ce joueur : questions à jouer, ou son score
-    s'il a déjà joué, plus le classement du jour."""
+    s'il a déjà joué (avec le détail de ses réponses), plus le classement."""
     _require_enabled()
     pseudo = user["pseudo"] if user else None
     already = daily_service.has_played(pseudo) if pseudo else None
+
+    review = None
+    if already and already.get("answers") is not None:
+        # Reconstruit le récap : les questions du jour sont déterministes, on les
+        # régénère et on y applique les réponses stockées du joueur.
+        full = daily_service.get_daily_questions(hide_answer=False)
+        review, _ = _build_details(full, already["answers"])
+
     return {
         "date": daily_service.today_str(),
-        "already_played": already,  # {score, total} ou None
+        "already_played": already,  # {score, total, answers} ou None
+        "review": review,           # détail des réponses passées, ou None
         "questions": None if already else daily_service.get_daily_questions(hide_answer=True),
         "leaderboard": daily_service.leaderboard(),
     }
@@ -43,31 +76,14 @@ def submit(payload: DailySubmit, user=Depends(get_current_user_optional)):
     le score. Une seule tentative comptée par jour et par compte."""
     _require_enabled()
     full = daily_service.get_daily_questions(hide_answer=False)
-    score = 0
-    details = []
-    for i, q in enumerate(full):
-        correct_idx = q["bonne_reponse"] - 1
-        given = payload.answers[i] if i < len(payload.answers) else None
-        ok = given == correct_idx
-        if ok:
-            score += 1
-        details.append({
-            "question": q["question"],
-            "theme": q["theme"],
-            "choix": q["choix"],
-            "difficulte": q["difficulte"],
-            "correct_index": correct_idx,
-            "given": given,
-            "correct": ok,
-            "explication": q["explication"],
-        })
+    details, score = _build_details(full, payload.answers)
 
     pseudo = user["pseudo"] if user else None
     already = daily_service.has_played(pseudo) if pseudo else None
 
     # On n'enregistre (et ne donne l'XP) que si connecté ET pas déjà joué.
     if pseudo and not already:
-        daily_service.record_attempt(pseudo, user["id"], score, len(full))
+        daily_service.record_attempt(pseudo, user["id"], score, len(full), answers=payload.answers)
         # XP proportionnelle aux bonnes réponses (mêmes règles que les autres modes).
         for i, q in enumerate(full):
             if details[i]["correct"]:

@@ -68,21 +68,27 @@ def has_played(pseudo: str, date_str: str = None) -> dict:
     date_str = date_str or today_str()
     conn = get_connection()
     row = conn.execute(
-        "SELECT score, total FROM daily_attempts WHERE date = ? AND pseudo = ?",
+        "SELECT score, total, answers FROM daily_attempts WHERE date = ? AND pseudo = ?",
         (date_str, pseudo),
     ).fetchone()
     conn.close()
-    return dict(row) if row else None
+    if not row:
+        return None
+    d = dict(row)
+    # answers est stocké en JSON ; on le décode pour l'appelant.
+    d["answers"] = json.loads(d["answers"]) if d.get("answers") else None
+    return d
 
 
-def record_attempt(pseudo: str, user_id, score: int, total: int, date_str: str = None):
+def record_attempt(pseudo: str, user_id, score: int, total: int, answers=None, date_str: str = None):
     date_str = date_str or today_str()
     conn = get_connection()
     # INSERT OR IGNORE : une seule tentative par jour, la première fait foi.
     conn.execute(
-        "INSERT OR IGNORE INTO daily_attempts (date, pseudo, user_id, score, total, created_at) "
-        "VALUES (?,?,?,?,?,?)",
-        (date_str, pseudo, user_id, score, total, datetime.now(timezone.utc).isoformat()),
+        "INSERT OR IGNORE INTO daily_attempts (date, pseudo, user_id, score, total, answers, created_at) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (date_str, pseudo, user_id, score, total, json.dumps(answers) if answers is not None else None,
+         datetime.now(timezone.utc).isoformat()),
     )
     conn.commit()
     conn.close()

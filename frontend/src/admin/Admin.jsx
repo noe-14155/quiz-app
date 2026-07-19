@@ -4,6 +4,7 @@ import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY } from "../design/theme";
 import TopBar from "../components/TopBar";
 import Button from "../components/Button";
 import Activity from "./Activity";
+import Collapsible from "../components/Collapsible";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
@@ -143,66 +144,61 @@ export default function Admin({ screen, onNavigate }) {
         </div>
       )}
 
-      <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>
-        Joueurs ({total})
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 28 }}>
-        {users.map((u) => (
-          <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "10px 14px" }}>
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>
-                {u.pseudo} {u.is_admin ? <span style={{ color: COLORS.gold, fontSize: 11 }}>(admin)</span> : null}
-              </p>
-              <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>
-                Tier {u.rank_tier} · {u.rank_points} pts · {u.xp_total} XP
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => resetUser(u.id)} aria-label="Réinitialiser" style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", padding: 6 }}>
-                <RotateCcw size={16} />
-              </button>
-              <button onClick={() => deleteUser(u.id)} aria-label="Supprimer" style={{ background: "none", border: "none", color: COLORS.danger, cursor: "pointer", padding: 6 }}>
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>
-        Modes de jeu
-      </p>
-      {settings && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
-          {Object.keys(MODE_LABELS).map((key) => {
-            const enabled = settings[key] === "1";
-            return (
-              <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "10px 16px" }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>{MODE_LABELS[key]}</span>
-                <button
-                  onClick={() => toggleMode(key)}
-                  style={{
-                    width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", position: "relative",
-                    background: enabled ? COLORS.success : COLORS.cardAlt, transition: "background 0.2s",
-                  }}
-                >
-                  <span style={{
-                    position: "absolute", top: 3, left: enabled ? 23 : 3, width: 18, height: 18, borderRadius: "50%",
-                    background: "#fff", transition: "left 0.2s",
-                  }} />
+      <Collapsible title="Joueurs" count={total}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {users.map((u) => (
+            <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "10px 14px" }}>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>
+                  {u.pseudo} {u.is_admin ? <span style={{ color: COLORS.gold, fontSize: 11 }}>(admin)</span> : null}
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>
+                  Tier {u.rank_tier} · {u.rank_points} pts · {u.xp_total} XP
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => resetUser(u.id)} aria-label="Réinitialiser" style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", padding: 6 }}>
+                  <RotateCcw size={16} />
+                </button>
+                <button onClick={() => deleteUser(u.id)} aria-label="Supprimer" style={{ background: "none", border: "none", color: COLORS.danger, cursor: "pointer", padding: 6 }}>
+                  <Trash2 size={16} />
                 </button>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
+      </Collapsible>
+
+      {settings && (
+        <Collapsible title="Modes de jeu">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {Object.keys(MODE_LABELS).map((key) => {
+              const enabled = settings[key] === "1";
+              return (
+                <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "10px 16px" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{MODE_LABELS[key]}</span>
+                  <button
+                    onClick={() => toggleMode(key)}
+                    style={{
+                      width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", position: "relative",
+                      background: enabled ? COLORS.success : COLORS.cardAlt, transition: "background 0.2s",
+                    }}
+                  >
+                    <span style={{
+                      position: "absolute", top: 3, left: enabled ? 23 : 3, width: 18, height: 18, borderRadius: "50%",
+                      background: "#fff", transition: "left 0.2s",
+                    }} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </Collapsible>
       )}
 
       {settings && (
-        <>
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Réglages globaux
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+        <Collapsible title="Réglages globaux">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
             {Object.keys(SETTINGS_LABELS).filter((key) => key in settings).map((key) => (
               <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <label style={{ fontSize: 13, color: COLORS.text, fontFamily: FONT_BODY, flex: 1 }}>
@@ -217,7 +213,7 @@ export default function Admin({ screen, onNavigate }) {
             ))}
           </div>
           <Button onClick={saveSettings} style={{ width: "100%" }}>Enregistrer les réglages</Button>
-        </>
+        </Collapsible>
       )}
       </>}
     </div>

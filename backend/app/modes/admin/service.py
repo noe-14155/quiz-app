@@ -174,9 +174,10 @@ def get_activity(days: int = 14, feed_limit: int = 40):
 
     # Joueurs : dernière connexion + nombre de connexions
     joueurs = conn.execute(
-        "SELECT u.pseudo, COUNT(s.token) AS nb_connexions, MAX(s.created_at) AS derniere_connexion "
-        "FROM users u LEFT JOIN sessions s ON s.user_id = u.id "
-        "GROUP BY u.id ORDER BY derniere_connexion DESC NULLS LAST"
+        "SELECT u.pseudo, "
+        "  (SELECT COUNT(*) FROM activity_log a WHERE a.pseudo = u.pseudo AND (a.event LIKE '%\\_start' ESCAPE '\\' OR a.event = 'multi_create')) AS nb_parties, "
+        "  (SELECT MAX(a.created_at) FROM activity_log a WHERE a.pseudo = u.pseudo AND (a.event LIKE '%\\_start' ESCAPE '\\' OR a.event = 'multi_create')) AS derniere_partie "
+        "FROM users u ORDER BY derniere_partie DESC NULLS LAST"
     ).fetchall()
 
     totaux = {
@@ -188,6 +189,9 @@ def get_activity(days: int = 14, feed_limit: int = 40):
             "SELECT COUNT(DISTINCT user_id) c FROM sessions WHERE created_at >= date('now', '-7 days')"
         ).fetchone()["c"],
         "evenements_total": conn.execute("SELECT COUNT(*) c FROM activity_log").fetchone()["c"],
+        "parties_total": conn.execute(
+            "SELECT COUNT(*) c FROM activity_log WHERE event LIKE '%\\_start' ESCAPE '\\' OR event = 'multi_create'"
+        ).fetchone()["c"],
     }
     conn.close()
 

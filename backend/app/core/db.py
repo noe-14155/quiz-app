@@ -61,6 +61,7 @@ def init_schema():
             user_id INTEGER,
             score INTEGER NOT NULL,
             total INTEGER NOT NULL,
+            answers TEXT,
             created_at TEXT NOT NULL,
             PRIMARY KEY (date, pseudo)
         );
@@ -163,6 +164,13 @@ def init_schema():
     # (à partir de Diamant III). NULL = jamais calculée encore.
     if "last_decay_date" not in existing_columns:
         conn.execute("ALTER TABLE users ADD COLUMN last_decay_date TEXT")
+        conn.commit()
+
+    # Migration : réponses données au défi du jour, pour pouvoir les revoir
+    # après retour à l'accueil.
+    existing_daily_columns = [row["name"] for row in conn.execute("PRAGMA table_info(daily_attempts)").fetchall()]
+    if "answers" not in existing_daily_columns:
+        conn.execute("ALTER TABLE daily_attempts ADD COLUMN answers TEXT")
         conn.commit()
 
     conn.close()

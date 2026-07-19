@@ -19,6 +19,7 @@ export default function Daily({ screen, onNavigate }) {
   const [answered, setAnswered] = useState(null);
   const [result, setResult] = useState(null); // résultat final après soumission
   const [timeLeft, setTimeLeft] = useState(TIME_PER_QUESTION);
+  const [showReview, setShowReview] = useState(false);
   const answeredRef = useRef(false);
   const goNextRef = useRef(() => {});
 
@@ -82,6 +83,45 @@ export default function Daily({ screen, onNavigate }) {
     );
   }
 
+  function CorrectionBlock({ details }) {
+    if (!details) return null;
+    return (
+      <>
+        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Correction</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+          {details.map((d, i) => {
+            const givenTxt = d.given !== null && d.given !== undefined ? d.choix[d.given] : "Pas de réponse";
+            return (
+              <div key={i} style={{
+                background: COLORS.card, borderRadius: 12, padding: 14,
+                borderLeft: `4px solid ${d.correct ? COLORS.success : COLORS.danger}`,
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                  {d.correct
+                    ? <Check size={16} color={COLORS.success} style={{ flexShrink: 0, marginTop: 2 }} />
+                    : <XIcon size={16} color={COLORS.danger} style={{ flexShrink: 0, marginTop: 2 }} />}
+                  <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{i + 1}. {d.question}</span>
+                </div>
+                <p style={{ margin: "0 0 4px", fontSize: 13, color: COLORS.success }}>
+                  Bonne réponse : <b>{d.choix[d.correct_index]}</b>
+                </p>
+                {!d.correct && (
+                  <p style={{ margin: "0 0 6px", fontSize: 13, color: COLORS.danger }}>
+                    Ta réponse : {givenTxt}
+                  </p>
+                )}
+                {d.explication && (
+                  <p style={{ margin: "6px 0 8px", fontSize: 13, lineHeight: 1.5, color: COLORS.muted }}>{d.explication}</p>
+                )}
+                <SearchLink question={d.question} reponse={d.choix[d.correct_index]} />
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
   // --- Écran résultat (juste après soumission) ---
   if (result) {
     return (
@@ -96,41 +136,7 @@ export default function Daily({ screen, onNavigate }) {
           </p>}
         </div>
 
-        {result.details && (
-          <>
-            <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Correction</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-              {result.details.map((d, i) => {
-                const givenTxt = d.given !== null && d.given !== undefined ? d.choix[d.given] : "Pas de réponse";
-                return (
-                  <div key={i} style={{
-                    background: COLORS.card, borderRadius: 12, padding: 14,
-                    borderLeft: `4px solid ${d.correct ? COLORS.success : COLORS.danger}`,
-                  }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                      {d.correct
-                        ? <Check size={16} color={COLORS.success} style={{ flexShrink: 0, marginTop: 2 }} />
-                        : <XIcon size={16} color={COLORS.danger} style={{ flexShrink: 0, marginTop: 2 }} />}
-                      <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{i + 1}. {d.question}</span>
-                    </div>
-                    <p style={{ margin: "0 0 4px", fontSize: 13, color: COLORS.success }}>
-                      Bonne réponse : <b>{d.choix[d.correct_index]}</b>
-                    </p>
-                    {!d.correct && (
-                      <p style={{ margin: "0 0 6px", fontSize: 13, color: COLORS.danger }}>
-                        Ta réponse : {givenTxt}
-                      </p>
-                    )}
-                    {d.explication && (
-                      <p style={{ margin: "6px 0 8px", fontSize: 13, lineHeight: 1.5, color: COLORS.muted }}>{d.explication}</p>
-                    )}
-                    <SearchLink question={d.question} reponse={d.choix[d.correct_index]} />
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+        <CorrectionBlock details={result.details} />
 
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Classement du jour</p>
         <div style={{ marginBottom: 20 }}><LeaderboardBlock lb={result.leaderboard} /></div>
@@ -152,6 +158,16 @@ export default function Daily({ screen, onNavigate }) {
           </h2>
           <p style={{ fontSize: 13, color: COLORS.muted, margin: "6px 0 0" }}>Reviens demain pour un nouveau défi !</p>
         </div>
+
+        {data.review && (
+          <>
+            <Button variant="secondary" onClick={() => setShowReview((v) => !v)} style={{ width: "100%", marginBottom: 16 }}>
+              {showReview ? "Masquer mes réponses" : "Revoir mes réponses"}
+            </Button>
+            {showReview && <CorrectionBlock details={data.review} />}
+          </>
+        )}
+
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Classement du jour</p>
         <div style={{ marginBottom: 20 }}><LeaderboardBlock lb={data.leaderboard} /></div>
         <Button variant="secondary" onClick={() => onNavigate("home")} style={{ width: "100%" }}>Accueil</Button>
