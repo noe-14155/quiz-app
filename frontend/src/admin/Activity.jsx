@@ -49,14 +49,14 @@ export default function Activity() {
       </div>
 
       <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>
-        Connexions par jour
+        Joueurs par jour
       </p>
-      <LineChart data={data.logins_par_jour} label="connexions" color={COLORS.gold} />
+      <LineChart data={data.joueurs_par_jour} label="joueurs" color={COLORS.gold} />
 
       <p style={{ fontSize: 13, color: COLORS.muted, margin: "12px 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>
-        Inscriptions par jour
+        Parties jouées par jour
       </p>
-      <LineChart data={data.inscriptions_par_jour} label="inscriptions" color={COLORS.success} />
+      <LineChart data={data.parties_par_jour} label="parties" color={COLORS.success} />
 
       <div style={{ marginTop: 16 }}>
         {/* Répartition par mode — dépliable */}

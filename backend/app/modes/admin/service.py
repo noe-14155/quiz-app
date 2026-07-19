@@ -146,17 +146,21 @@ def get_activity(days: int = 14, feed_limit: int = 40):
     """
     conn = get_connection()
 
-    # Connexions par jour (source : sessions, la plus ancienne et la plus fiable)
-    logins_par_jour = conn.execute(
-        "SELECT substr(created_at, 1, 10) AS jour, COUNT(*) AS n FROM sessions "
-        "WHERE created_at >= date('now', ?) GROUP BY jour ORDER BY jour",
+    # Joueurs uniques ayant JOUÉ par jour (source : activity_log, événements de
+    # partie). On compte les pseudos distincts par jour — un joueur qui enchaîne
+    # plusieurs parties dans la journée ne compte qu'une fois.
+    joueurs_par_jour = conn.execute(
+        "SELECT substr(created_at, 1, 10) AS jour, COUNT(DISTINCT pseudo) AS n FROM activity_log "
+        "WHERE (event LIKE '%\\_start' ESCAPE '\\' OR event = 'multi_create') "
+        "AND pseudo IS NOT NULL AND created_at >= date('now', ?) GROUP BY jour ORDER BY jour",
         (f"-{days} days",),
     ).fetchall()
 
-    # Inscriptions par jour
-    inscriptions_par_jour = conn.execute(
-        "SELECT substr(created_at, 1, 10) AS jour, COUNT(*) AS n FROM users "
-        "WHERE created_at >= date('now', ?) GROUP BY jour ORDER BY jour",
+    # Parties jouées par jour (source : activity_log, tous événements de partie).
+    parties_par_jour = conn.execute(
+        "SELECT substr(created_at, 1, 10) AS jour, COUNT(*) AS n FROM activity_log "
+        "WHERE (event LIKE '%\\_start' ESCAPE '\\' OR event = 'multi_create') "
+        "AND created_at >= date('now', ?) GROUP BY jour ORDER BY jour",
         (f"-{days} days",),
     ).fetchall()
 
@@ -197,8 +201,8 @@ def get_activity(days: int = 14, feed_limit: int = 40):
 
     return {
         "totaux": totaux,
-        "logins_par_jour": [dict(r) for r in logins_par_jour],
-        "inscriptions_par_jour": [dict(r) for r in inscriptions_par_jour],
+        "joueurs_par_jour": [dict(r) for r in joueurs_par_jour],
+        "parties_par_jour": [dict(r) for r in parties_par_jour],
         "par_mode": [{"event": r["event"], "label": EVENT_LABELS.get(r["event"], r["event"]), "n": r["n"]} for r in par_mode],
         "feed": [{"event": r["event"], "label": EVENT_LABELS.get(r["event"], r["event"]), "pseudo": r["pseudo"], "created_at": r["created_at"]} for r in feed],
         "joueurs": [dict(r) for r in joueurs],
