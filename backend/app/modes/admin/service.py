@@ -113,6 +113,17 @@ def update_settings(patch: dict):
     for key, value in patch.items():
         if key not in DEFAULT_SETTINGS:
             continue
+        # Les réglages de mode (mode_*_enabled) valent "0"/"1". Tous les autres
+        # sont numériques : on rejette le texte non numérique et les négatifs
+        # pour ne pas corrompre le calcul des rangs / durées.
+        if not key.startswith("mode_"):
+            try:
+                n = int(str(value))
+            except (TypeError, ValueError):
+                continue  # valeur invalide ignorée, l'ancienne reste
+            if n < 0:
+                continue
+            value = n
         conn.execute(
             "INSERT INTO app_settings (key, value) VALUES (?, ?) "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",

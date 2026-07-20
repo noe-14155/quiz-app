@@ -16,12 +16,17 @@ class Credentials(BaseModel):
 
 @router.post("/register")
 def register(payload: Credentials):
-    user_id = service.create_user(payload.pseudo, payload.password)
+    pseudo = payload.pseudo.strip()
+    if len(pseudo) < 2 or len(pseudo) > 20:
+        raise HTTPException(status_code=422, detail="Le pseudo doit faire entre 2 et 20 caractères")
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 6 caractères")
+    user_id = service.create_user(pseudo, payload.password)
     if user_id is None:
         raise HTTPException(status_code=409, detail="Ce pseudo est déjà pris")
     token = service.create_session(user_id)
-    log_event("register", user_id=user_id, pseudo=payload.pseudo)
-    return {"token": token, "pseudo": payload.pseudo}
+    log_event("register", user_id=user_id, pseudo=pseudo)
+    return {"token": token, "pseudo": pseudo}
 
 
 @router.post("/login")

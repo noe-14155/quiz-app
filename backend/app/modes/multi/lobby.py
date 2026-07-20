@@ -65,6 +65,27 @@ def join_room(code: str, player_name: str):
         conn.close()
 
 
+def remove_player(code: str, player_name: str):
+    """Retire un joueur de la liste (quand il quitte, s'il n'est pas l'hôte).
+    Atomique pour ne pas entrer en conflit avec un join simultané."""
+    conn = get_connection()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT players FROM multi_rooms WHERE code = ?", (code,)).fetchone()
+        if not row:
+            conn.rollback()
+            return
+        players = json.loads(row["players"])
+        if player_name in players:
+            players.remove(player_name)
+            conn.execute("UPDATE multi_rooms SET players = ? WHERE code = ?", (json.dumps(players), code))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        conn.close()
+
+
 def update_options(code: str, themes=None, difficulte=None, nb_questions=None):
     conn = get_connection()
     if themes is not None:

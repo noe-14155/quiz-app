@@ -61,20 +61,24 @@ export default function Multi({ screen, onNavigate }) {
   }, [screen, code]);
 
   // ---------- play polling ----------
+  // Architecture "l'hôte pilote" : SEUL l'hôte appelle /tick (qui fait avancer
+  // la partie ET renvoie l'état). Les autres joueurs appellent /state en
+  // lecture seule. Un seul écrivain de logique de jeu = plus de conflits.
   useEffect(() => {
     if (screen !== "multi-play" || !code) return;
     async function poll() {
       try {
-        const r = await apiFetch(`/api/multi/${code}/state`);
+        const endpoint = isHost ? `/api/multi/${code}/tick` : `/api/multi/${code}/state`;
+        const r = await apiFetch(endpoint, isHost ? { method: "POST" } : undefined);
         setState(r);
         if (r.room.status === "finished") onNavigate("multi-results");
-      } catch (e) { /* ignore ponctuel */ }
+      } catch (e) { /* ignore ponctuel, on réessaie au prochain tick */ }
     }
     poll();
     pollRef.current = setInterval(poll, POLL_MS);
     return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, code]);
+  }, [screen, code, isHost]);
 
   async function createRoom() {
     setError(null);
@@ -133,9 +137,18 @@ export default function Multi({ screen, onNavigate }) {
     } catch (e) { setError(e.message); }
   }
 
-  function leaveRoom() {
+  async function leaveRoom() {
     clearInterval(pollRef.current);
     setQuitOpen(false);
+    // Prévenir le serveur : si l'hôte quitte, la partie se termine pour tout le
+    // monde ; sinon le joueur est juste retiré de la liste. On n'attend pas la
+    // réponse pour naviguer (au cas où le réseau traîne).
+    if (code) {
+      apiFetch(`/api/multi/${code}/leave`, {
+        method: "POST",
+        body: JSON.stringify({ player_name: name }),
+      }).catch(() => {});
+    }
     setCode(null);
     setRoom(null);
     setState(null);

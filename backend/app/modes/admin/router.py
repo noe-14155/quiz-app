@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.auth.router import get_current_admin
@@ -19,9 +19,9 @@ def bootstrap(payload: BootstrapPayload):
     variables Portainer) — change cette valeur par défaut avant de l'utiliser."""
     result = service.bootstrap_admin(payload.pseudo, payload.secret)
     if result == "bad_secret":
-        return {"ok": False, "detail": "Secret incorrect"}
+        raise HTTPException(status_code=403, detail="Secret incorrect")
     if result == "user_not_found":
-        return {"ok": False, "detail": "Ce pseudo n'existe pas — crée d'abord le compte via /api/auth/register"}
+        raise HTTPException(status_code=404, detail="Ce pseudo n'existe pas — crée d'abord le compte via /api/auth/register")
     return {"ok": True, "detail": f"{payload.pseudo} est maintenant administrateur"}
 
 

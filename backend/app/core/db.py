@@ -15,22 +15,35 @@ def get_connection():
     if not _data_dir_ready:
         os.makedirs(DATA_DIR, exist_ok=True)
         _data_dir_ready = True
-    # timeout=10 : si la base est verrouillée par une autre écriture (plusieurs
-    # joueurs multi qui agissent en même temps), on attend jusqu'à 10 s au lieu
-    # de lever immédiatement "database is locked" (qui provoquait des erreurs 500
-    # en cascade quand plusieurs personnes rejoignaient/jouaient simultanément).
-    conn = sqlite3.connect(DB_PATH, timeout=10)
+
+    # check_same_thread=False : uvicorn sert les requêtes sur plusieurs threads.
+    # Chaque appel crée SA connexion (jamais partagée entre threads), mais SQLite
+    # refuse par défaut qu'une connexion soit même créée hors du thread principal
+    # dans certains montages ; on lève cette contrainte explicitement puisqu'on
+    # ne partage jamais une connexion entre threads.
+    # timeout=10 : attendre si la base est verrouillée par une écriture concurrente
+    # plutôt que de lever "database is locked" immédiatement.
+    conn = sqlite3.connect(DB_PATH, timeout=10, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+
+    # Ces PRAGMA doivent être posés sur CHAQUE connexion (ils ne sont pas
+    # globaux à la base pour busy_timeout). L'ancien code les sautait à partir de
+    # la 2e connexion à cause d'un flag global : la connexion du 2e joueur se
+    # retrouvait sans busy_timeout et plantait sur un verrou — ce qui pouvait
+    # tuer le worker uvicorn (d'où "erreur 500, obligé de relancer le stack").
+    conn.execute("PRAGMA busy_timeout=10000")
+
+    # WAL : meilleur pour la concurrence, mais fragile sur certains volumes
+    # Docker/réseau. On l'active une seule fois et on n'échoue jamais si le
+    # montage ne le supporte pas (repli silencieux sur le mode journal par défaut,
+    # qui fonctionne aussi grâce au busy_timeout ci-dessus).
     if not _wal_enabled:
-        # WAL : bien meilleur pour les accès concurrents (lecteurs et écrivain
-        # ne se bloquent pas mutuellement). Activé une fois, persistant sur le
-        # fichier de base.
         try:
             conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA busy_timeout=10000")
-            _wal_enabled = True
         except Exception:
             pass
+        _wal_enabled = True
+
     return conn
 
 

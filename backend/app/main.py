@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 
 from app.core.db import init_schema, create_indexes
 from app.questions.service import import_questions_from_csv
@@ -24,6 +26,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+logger = logging.getLogger("quiz")
+
+
+@app.exception_handler(Exception)
+async def catch_all_exceptions(request: Request, exc: Exception):
+    """Filet de sécurité : toute exception non gérée est transformée en réponse
+    500 propre AU LIEU de remonter et potentiellement tuer le worker uvicorn.
+    C'était la cause de "erreur 500, obligé de relancer le stack" : une
+    exception dans un endpoint (souvent le multi sous accès concurrent) faisait
+    tomber le process, qui ne se relevait pas. Ici, on journalise et on répond,
+    le serveur reste debout."""
+    logger.exception("Exception non gérée sur %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Une erreur interne est survenue, réessaie."},
+    )
 
 
 @app.on_event("startup")

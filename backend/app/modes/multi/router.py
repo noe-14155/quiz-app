@@ -72,10 +72,37 @@ def start_game(code: str):
 
 @router.get("/{code}/state")
 def get_state(code: str):
+    """Lecture seule de l'état. Interrogé par TOUS les joueurs. Ne modifie
+    jamais la partie (l'avancement est réservé à l'hôte via /tick)."""
     state = sync.get_state(code)
     if state is None:
         raise HTTPException(status_code=404, detail="Partie introuvable")
     return state
+
+
+@router.post("/{code}/tick")
+def tick(code: str):
+    """Fait avancer la partie. RÉSERVÉ À L'HÔTE : c'est le seul appareil qui
+    pilote la progression, ce qui élimine les conflits d'écriture concurrents.
+    Renvoie l'état à jour."""
+    state = sync.tick(code)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Partie introuvable")
+    return state
+
+
+@router.post("/{code}/leave")
+def leave(code: str, payload: JoinRoomPayload):
+    """Un joueur quitte. Si c'est l'hôte, la partie se termine pour tout le
+    monde. Sinon, le joueur est simplement retiré de la liste."""
+    room = lobby.get_room(code)
+    if not room:
+        return {"ok": True}  # déjà disparue, rien à faire
+    if payload.player_name == room["host_name"]:
+        sync.end_game(code)
+    else:
+        lobby.remove_player(code, payload.player_name)
+    return {"ok": True}
 
 
 @router.post("/{code}/answer")
