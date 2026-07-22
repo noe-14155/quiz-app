@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Trash2, RotateCcw } from "lucide-react";
-import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY } from "../design/theme";
+import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tint } from "../design/theme";
 import TopBar from "../components/TopBar";
+import { inputStyle } from "../components/PageTitle";
 import Button from "../components/Button";
 import Activity from "./Activity";
 import Collapsible from "../components/Collapsible";
@@ -9,23 +10,19 @@ import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 const SETTINGS_LABELS = {
-  ranked_gain_low: "Classé — gain bonne réponse (rang le plus bas, Fer)",
-  ranked_gain_high: "Classé — gain bonne réponse (rang le plus haut, Légende)",
+  ranked_gain_low: "Classé — gain bonne réponse (rang le plus bas, Neurone)",
+  ranked_gain_high: "Classé — gain bonne réponse (rang le plus haut, Prodige)",
   ranked_loss_low: "Classé — malus mauvaise réponse (rang le plus bas)",
   ranked_loss_high: "Classé — malus mauvaise réponse (rang le plus haut)",
-  ranked_loss_pass: "Classé — coût de passer (sous Diamant uniquement)",
-  ranked_points_per_tier: "Classé — points par palier (III→II→I)",
-  ranked_daily_decay: "Classé — perte par jour (dès Diamant III)",
+  ranked_loss_pass: "Classé — coût de passer (sous Génie uniquement)",
+  ranked_daily_decay: "Classé — perte par jour (dès Génie III)",
   ranked_time_per_question: "Classé — durée par question (s)",
-  multi_time_per_question: "Multi — durée par question (s)",
-  multi_reveal_seconds: "Multi — durée de la révélation (s)",
 };
 
 const MODE_LABELS = {
   mode_chill_enabled: "Mode Chill",
   mode_ranked_enabled: "Mode Classé",
   mode_local_enabled: "Mode Local",
-  mode_multi_enabled: "Mode Multi",
   mode_daily_enabled: "Défi du jour",
 };
 
@@ -107,15 +104,15 @@ export default function Admin({ screen, onNavigate }) {
   return (
     <div style={cardWrap}>
       <TopBar screen={screen} onNavigate={onNavigate} />
-      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 16px" }}>Administration</h2>
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: "0 0 16px" }}>Administration</h2>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
         {[["gestion", "Gestion"], ["suivi", "Suivi"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
-            flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+            flex: 1, padding: "10px 0", borderRadius: 14, cursor: "pointer", fontWeight: 800, fontSize: 13,
             fontFamily: FONT_BODY,
-            border: tab === id ? `2px solid ${COLORS.gold}` : `2px solid ${COLORS.cardAlt}`,
-            background: tab === id ? "rgba(59,130,246,0.12)" : "transparent",
+            border: `1.5px solid ${tab === id ? COLORS.gold : COLORS.cardAlt}`,
+            background: tab === id ? tint(COLORS.gold, 10) : "transparent",
             color: tab === id ? COLORS.gold : COLORS.text,
           }}>{label}</button>
         ))}
@@ -130,16 +127,12 @@ export default function Admin({ screen, onNavigate }) {
       {stats && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
           <div style={{ background: COLORS.card, borderRadius: 12, padding: "10px 16px", flex: 1, minWidth: 120 }}>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: FONT_DISPLAY }}>{stats.nb_comptes}</p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 800, fontFamily: FONT_DISPLAY }}>{stats.nb_comptes}</p>
             <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>Comptes</p>
           </div>
           <div style={{ background: COLORS.card, borderRadius: 12, padding: "10px 16px", flex: 1, minWidth: 120 }}>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: FONT_DISPLAY }}>{stats.nb_parties_classees}</p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 800, fontFamily: FONT_DISPLAY }}>{stats.nb_parties_classees}</p>
             <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>Parties classées</p>
-          </div>
-          <div style={{ background: COLORS.card, borderRadius: 12, padding: "10px 16px", flex: 1, minWidth: 120 }}>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: FONT_DISPLAY }}>{stats.nb_parties_multi}</p>
-            <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>Parties multi</p>
           </div>
         </div>
       )}
@@ -147,13 +140,13 @@ export default function Admin({ screen, onNavigate }) {
       <Collapsible title="Joueurs" count={total}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {users.map((u) => (
-            <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "10px 14px" }}>
+            <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 14, padding: "10px 14px" }}>
               <div>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>
                   {u.pseudo} {u.is_admin ? <span style={{ color: COLORS.gold, fontSize: 11 }}>(admin)</span> : null}
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>
-                  Tier {u.rank_tier} · {u.rank_points} pts · {u.xp_total} XP
+                  {u.rank_name || `Tier ${u.rank_tier}`} · {u.rank_points} pts · {u.xp_total} XP
                 </p>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
@@ -180,13 +173,13 @@ export default function Admin({ screen, onNavigate }) {
                   <button
                     onClick={() => toggleMode(key)}
                     style={{
-                      width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", position: "relative",
-                      background: enabled ? COLORS.success : COLORS.cardAlt, transition: "background 0.2s",
+                      width: 48, height: 28, borderRadius: 20, border: "none", cursor: "pointer", position: "relative",
+                      background: enabled ? COLORS.gold : COLORS.cardAlt, transition: "background 0.2s", flexShrink: 0,
                     }}
                   >
                     <span style={{
-                      position: "absolute", top: 3, left: enabled ? 23 : 3, width: 18, height: 18, borderRadius: "50%",
-                      background: "#fff", transition: "left 0.2s",
+                      position: "absolute", top: 3, left: enabled ? 23 : 3, width: 22, height: 22, borderRadius: "50%",
+                      background: "#fff", transition: "left 0.2s", boxShadow: "0 2px 5px rgba(0,0,0,.2)",
                     }} />
                   </button>
                 </div>
@@ -207,12 +200,12 @@ export default function Admin({ screen, onNavigate }) {
                 <input
                   value={settings[key]}
                   onChange={(e) => updateSettingField(key, e.target.value)}
-                  style={{ width: 70, padding: "8px 10px", borderRadius: 10, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, textAlign: "center", fontSize: 13 }}
+                  style={inputStyle({ width: 72, padding: "9px 8px", textAlign: "center", fontSize: 14 })}
                 />
               </div>
             ))}
           </div>
-          <Button onClick={saveSettings} style={{ width: "100%" }}>Enregistrer les réglages</Button>
+          <Button onClick={saveSettings}>Enregistrer les réglages</Button>
         </Collapsible>
       )}
       </>}

@@ -10,7 +10,7 @@ export default function QuitConfirmModal({ onCancel, onConfirm }) {
       }}
     >
       <div style={{ background: COLORS.card, borderRadius: 16, padding: 24, maxWidth: 340, width: "100%" }}>
-        <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>Quitter la partie ?</p>
+        <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 800, margin: "0 0 8px" }}>Quitter la partie ?</p>
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 20px", fontFamily: FONT_BODY }}>
           Ta progression dans cette partie sera perdue.
         </p>

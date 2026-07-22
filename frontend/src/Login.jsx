@@ -1,17 +1,9 @@
 import { useState } from "react";
-import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY } from "./design/theme";
+import { cardWrap, COLORS, FONT_BODY } from "./design/theme";
 import TopBar from "./components/TopBar";
 import Button from "./components/Button";
+import PageTitle, { inputStyle } from "./components/PageTitle";
 import { useAuth } from "./auth/AuthContext";
-
-// Fonction (et non constante de module) : une constante serait évaluée une
-// seule fois à l'import, avec les couleurs du thème de départ, et ne suivrait
-// jamais un changement clair/sombre.
-const inputStyle = () => ({
-  width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 12, boxSizing: "border-box",
-  border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text,
-  fontFamily: FONT_BODY, fontSize: 15,
-});
 
 export default function Login({ screen, onNavigate }) {
   const { login, register } = useAuth();
@@ -39,22 +31,35 @@ export default function Login({ screen, onNavigate }) {
   return (
     <div style={cardWrap}>
       <TopBar screen={screen} onNavigate={onNavigate} />
-      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>
+      <PageTitle subtitle={mode === "login"
+        ? "Retrouve ton rang et ta progression."
+        : "Pseudo de 2 à 20 caractères, mot de passe d'au moins 6."}>
         {mode === "login" ? "Connexion" : "Créer un compte"}
-      </h2>
+      </PageTitle>
 
       <form onSubmit={submit}>
-        <input value={pseudo} onChange={(e) => setPseudo(e.target.value)} placeholder="Pseudo" style={inputStyle()} />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" type="password" style={inputStyle()} />
+        <input
+          value={pseudo}
+          onChange={(e) => setPseudo(e.target.value)}
+          placeholder="Pseudo"
+          style={inputStyle({ marginBottom: 12 })}
+        />
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Mot de passe"
+          type="password"
+          style={inputStyle({ marginBottom: 12 })}
+        />
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
-        <Button type="submit" disabled={!pseudo.trim() || !password.trim() || loading} style={{ width: "100%", marginBottom: 12 }}>
+        <Button type="submit" disabled={!pseudo.trim() || !password.trim() || loading} style={{ marginBottom: 14 }}>
           {loading ? "..." : mode === "login" ? "Se connecter" : "Créer le compte"}
         </Button>
       </form>
 
       <button
         onClick={() => setMode(mode === "login" ? "register" : "login")}
-        style={{ background: "none", border: "none", color: COLORS.gold, cursor: "pointer", fontFamily: FONT_BODY, fontWeight: 700, fontSize: 13, display: "block", margin: "0 auto" }}
+        style={{ background: "none", border: "none", color: COLORS.gold, cursor: "pointer", fontFamily: FONT_BODY, fontWeight: 800, fontSize: 13, display: "block", margin: "0 auto" }}
       >
         {mode === "login" ? "Pas encore de compte ? En créer un" : "Déjà un compte ? Se connecter"}
       </button>

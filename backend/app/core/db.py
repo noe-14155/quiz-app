@@ -166,7 +166,7 @@ def init_schema():
 
     # Migration : même chose pour questions_data sur multi_rooms, ajoutée
     # après coup pour corriger le mélange non persistant des questions en
-    # multi. Sans cette migration, /api/multi/{code}/start échoue avec une
+    # multi (mode retiré). Tables conservées pour ne rien détruire en base.
     # erreur 500 ("no such column: questions_data") sur une base existante.
     existing_room_columns = [row["name"] for row in conn.execute("PRAGMA table_info(multi_rooms)").fetchall()]
     if "questions_data" not in existing_room_columns:
@@ -174,7 +174,7 @@ def init_schema():
         conn.commit()
 
     # Migration : date du dernier calcul de la perte quotidienne du mode classé
-    # (à partir de Diamant III). NULL = jamais calculée encore.
+    # (à partir de Génie III). NULL = jamais calculée encore.
     if "last_decay_date" not in existing_columns:
         conn.execute("ALTER TABLE users ADD COLUMN last_decay_date TEXT")
         conn.commit()

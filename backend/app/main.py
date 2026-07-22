@@ -11,7 +11,6 @@ from app.modes.chill.router import router as chill_router
 from app.modes.ranked.router import router as ranked_router
 from app.modes.local.router import router as local_router
 from app.modes.daily.router import router as daily_router
-from app.modes.multi.router import router as multi_router
 from app.modes.admin.router import router as admin_router
 from app.modes.admin import service as admin_service
 from app.profile.router import router as profile_router
@@ -35,7 +34,7 @@ async def catch_all_exceptions(request: Request, exc: Exception):
     """Filet de sécurité : toute exception non gérée est transformée en réponse
     500 propre AU LIEU de remonter et potentiellement tuer le worker uvicorn.
     C'était la cause de "erreur 500, obligé de relancer le stack" : une
-    exception dans un endpoint (souvent le multi sous accès concurrent) faisait
+    exception dans un endpoint faisait
     tomber le process, qui ne se relevait pas. Ici, on journalise et on répond,
     le serveur reste debout."""
     logger.exception("Exception non gérée sur %s %s", request.method, request.url.path)
@@ -72,6 +71,5 @@ app.include_router(chill_router)
 app.include_router(ranked_router)
 app.include_router(local_router)
 app.include_router(daily_router)
-app.include_router(multi_router)
 app.include_router(admin_router)
 app.include_router(profile_router)

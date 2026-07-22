@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
-import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY } from "../../design/theme";
+import { cardWrap, COLORS, FONT_BODY, sectionLabel } from "../../design/theme";
 import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
 import QuitConfirmModal from "../../components/QuitConfirmModal";
 import SearchLink from "../../components/SearchLink";
+import QuizHeader, { QuizTopLine, QuizQuestion, Explanation } from "../../components/QuizHeader";
+import BigScore from "../../components/BigScore";
+import Pill from "../../components/Pill";
+import PageTitle from "../../components/PageTitle";
 import { apiFetch } from "../../api/client";
 
 const THEMES = [
@@ -17,6 +21,8 @@ const THEMES = [
 // UNIQUEMENT par la prop "screen" venant du parent. Aucun état interne
 // parallèle du type "phase" — avoir deux sources de vérité pour "quel écran
 // afficher" a déjà causé des bugs de navigation (bouton Retour désynchronisé).
+const DIFF_LABELS = { 1: "Très facile", 2: "Facile", 3: "Moyen", 4: "Difficile", 5: "Expert" };
+
 export default function Chill({ screen, onNavigate }) {
   const [themes, setThemes] = useState(THEMES);
   const [diff, setDiff] = useState(3);
@@ -106,25 +112,16 @@ export default function Chill({ screen, onNavigate }) {
     return (
       <div style={cardWrap}>
         <TopBar screen="chill-setup" onNavigate={onNavigate} />
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>Mode chill</h2>
-        <p style={{ color: COLORS.muted, margin: "0 0 20px", fontSize: 14 }}>Choisis tes thèmes, la difficulté et le nombre de questions.</p>
+        <PageTitle subtitle="Choisis tes thèmes, la difficulté et le nombre de questions.">Mode chill</PageTitle>
 
-        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>Thèmes</p>
+        <p style={{ ...sectionLabel, marginTop: 0 }}>Thèmes</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-          {THEMES.map((t) => {
-            const active = themes.includes(t);
-            return (
-              <button key={t} onClick={() => toggleTheme(t)} style={{
-                padding: "8px 16px", borderRadius: 999,
-                border: active ? `2px solid ${COLORS.gold}` : `2px solid ${COLORS.cardAlt}`,
-                background: active ? "rgba(59,130,246,0.12)" : COLORS.card,
-                color: active ? COLORS.gold : COLORS.text, fontWeight: 700, fontSize: 13, cursor: "pointer",
-              }}>{t}</button>
-            );
-          })}
+          {THEMES.map((t) => (
+            <Pill key={t} active={themes.includes(t)} onClick={() => toggleTheme(t)}>{t}</Pill>
+          ))}
         </div>
 
-        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>Difficulté</p>
+        <p style={sectionLabel}>Difficulté</p>
         <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button key={n} onClick={() => setDiff(n)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
@@ -141,15 +138,15 @@ export default function Chill({ screen, onNavigate }) {
           }}
         >
           <span style={{
-            width: 42, height: 24, borderRadius: 999, flexShrink: 0, position: "relative",
+            width: 48, height: 28, borderRadius: 20, flexShrink: 0, position: "relative",
             background: exactOnly ? COLORS.gold : COLORS.cardAlt, transition: "background 0.15s",
           }}>
             <span style={{
-              position: "absolute", top: 3, left: exactOnly ? 21 : 3, width: 18, height: 18,
-              borderRadius: "50%", background: "#fff", transition: "left 0.15s",
+              position: "absolute", top: 3, left: exactOnly ? 23 : 3, width: 22, height: 22,
+              borderRadius: "50%", background: "#fff", transition: "left 0.15s", boxShadow: "0 2px 5px rgba(0,0,0,.2)",
             }} />
           </span>
-          <span style={{ fontSize: 13, color: COLORS.text, fontWeight: 700 }}>
+          <span style={{ fontSize: 13, color: COLORS.text, fontWeight: 800 }}>
             Cette difficulté uniquement
             <span style={{ display: "block", fontSize: 11, color: COLORS.muted, fontWeight: 400 }}>
               {exactOnly ? `Seulement les questions à ${diff} étoile${diff > 1 ? "s" : ""}` : `Toutes les questions jusqu'à ${diff} étoile${diff > 1 ? "s" : ""}`}
@@ -157,14 +154,14 @@ export default function Chill({ screen, onNavigate }) {
           </span>
         </button>
 
-        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px" }}>
-          Questions : <span style={{ color: COLORS.text, fontWeight: 700 }}>{nb}</span>
+        <p style={{ ...sectionLabel, marginBottom: 8 }}>
+          Questions : <span style={{ color: COLORS.gold }}>{nb}</span>
         </p>
         <input type="range" min={3} max={15} value={nb} onChange={(e) => setNb(Number(e.target.value))}
           style={{ width: "100%", accentColor: COLORS.gold, marginBottom: 20 }} />
 
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
-        <Button onClick={start} disabled={themes.length === 0 || loading} style={{ width: "100%" }}>
+        <Button onClick={start} disabled={themes.length === 0 || loading}>
           {loading ? "Chargement..." : "Commencer"}
         </Button>
       </div>
@@ -181,7 +178,7 @@ export default function Chill({ screen, onNavigate }) {
         <div style={cardWrap}>
           <TopBar screen="chill-setup" onNavigate={onNavigate} />
           <p style={{ color: COLORS.muted, fontSize: 14, marginBottom: 16 }}>Aucune question chargée.</p>
-          <Button onClick={() => onNavigate("chill-setup")} style={{ width: "100%" }}>Revenir aux réglages</Button>
+          <Button onClick={() => onNavigate("chill-setup")}>Revenir aux réglages</Button>
         </div>
       );
     }
@@ -189,14 +186,18 @@ export default function Chill({ screen, onNavigate }) {
       <div style={cardWrap}>
         {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={quitToHome} />}
         <TopBar screen="chill-quiz" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Question {index + 1} / {pool.length}</span>
-          <div style={{ display: "flex", gap: 2 }}>
-            {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={14} color={COLORS.gold} fill={n <= q.difficulte ? COLORS.gold : "none"} />)}
-          </div>
-        </div>
-        <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
-        <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, margin: "0 0 20px" }}>{q.question}</h3>
+        <QuizTopLine index={index} total={pool.length} />
+        <QuizHeader
+          index={index}
+          total={pool.length}
+          rightLabel="Chill"
+          progressPct={(index / pool.length) * 100}
+          tags={[
+            { label: q.theme, color: COLORS.gold },
+            { label: DIFF_LABELS[q.difficulte] || `Niveau ${q.difficulte}`, color: COLORS.accent3 },
+          ]}
+        />
+        <QuizQuestion>{q.question}</QuizQuestion>
 
         <AnswerGrid choix={q.choix} answered={answered} correctIndex={reveal ? reveal.correct_index : null} onPick={pick} revealCorrectness={reveal !== null} />
 
@@ -204,12 +205,19 @@ export default function Chill({ screen, onNavigate }) {
 
         {reveal && (
           <>
-            <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 16 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.6, color: COLORS.muted }}>{reveal.explication}</p>
-              <SearchLink question={q.question} reponse={q.choix[reveal.correct_index]} />
-            </div>
-            <Button onClick={next} style={{ width: "100%" }}>
-              {index + 1 >= pool.length ? "Voir les résultats" : "Suivant"}
+            <Explanation
+              ok={reveal.correct}
+              title={reveal.correct ? "Bonne réponse" : "Raté"}
+              correctAnswer={reveal.correct ? null : q.choix[reveal.correct_index]}
+              text={reveal.explication}
+            >
+              <div style={{ marginTop: 10 }}>
+                <SearchLink question={q.question} reponse={q.choix[reveal.correct_index]} />
+              </div>
+            </Explanation>
+            <div style={{ height: 14 }} />
+            <Button onClick={next}>
+              {index + 1 >= pool.length ? "Voir les résultats" : "Question suivante"}
             </Button>
           </>
         )}
@@ -221,11 +229,10 @@ export default function Chill({ screen, onNavigate }) {
   return (
     <div style={cardWrap}>
       <TopBar screen="chill-results" onNavigate={onNavigate} />
-      <div style={{ textAlign: "center", marginBottom: 22 }}>
-        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 6px", textTransform: "uppercase" }}>Résultat</p>
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 38, fontWeight: 700, margin: 0 }}>{score} / {pool.length}</h2>
-      </div>
-      <Button onClick={() => onNavigate("chill-setup")} style={{ width: "100%" }}>Rejouer</Button>
+      <BigScore score={score} total={pool.length} subtitle="Mode chill — aucun impact sur ton rang." />
+      <Button onClick={() => onNavigate("chill-setup")}>Rejouer</Button>
+      <div style={{ height: 10 }} />
+      <Button variant="secondary" onClick={() => onNavigate("home")}>Accueil</Button>
     </div>
   );
 }

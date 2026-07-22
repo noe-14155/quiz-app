@@ -64,9 +64,9 @@ def get_rules(user=Depends(get_current_user)):
         # Tableau complet du barème par rang, pour l'affichage informatif au joueur.
         "scale": rank_config.full_scale(cfg),
         "current_rank": rank_config.tier_info(user["rank_points"], cfg)["rank"],
-        "points_per_tier": rank_config.points_per_tier(cfg),
         "daily_decay": int(cfg.get("ranked_daily_decay", rank_config.DEFAULTS["daily_decay"])),
-        "diamant_floor": rank_config.diamant_floor_points(cfg),
+        "decay_floor": rank_config.diamant_floor_points(cfg),
+        "decay_rank": rank_config.RANKS[rank_config.LOCK_RANK_INDEX],
     }
 
 
@@ -129,11 +129,11 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
     cfg = settings
     tier = rank_config.tier_from_points(user["rank_points"], cfg)
     if payload.choice is None:
-        # Passer est interdit à partir de Diamant : on refuse la requête plutôt
+        # Passer est interdit à partir de Génie : on refuse la requête plutôt
         # que de l'accepter silencieusement (le frontend masque déjà le bouton).
         if not rank_config.can_pass(user["rank_points"], cfg):
             conn.close()
-            raise HTTPException(status_code=403, detail="Passer une question n'est plus autorisé à partir de Diamant")
+            raise HTTPException(status_code=403, detail="Passer une question n'est plus autorisé à partir de Génie")
         delta, result, correct = -rank_config.loss_for_pass(tier, cfg), "passee", False
     else:
         correct = payload.choice == question["bonne_reponse"] - 1
@@ -165,6 +165,27 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         "new_tier": new_tier,
         "new_rank_points": new_rank_points,
         "new_progress": rank_config.progress_in_tier(new_rank_points, cfg),
+    }
+
+
+@router.get("/ladder")
+def get_ladder(user=Depends(get_current_user)):
+    """L'échelle des rangs, avec pour chacun son état vis-à-vis du joueur
+    (dépassé / actuel / pas encore atteint). Alimente l'écran « L'échelle »."""
+    cfg = get_settings()
+    pts = user["rank_points"]
+    # Position dans le classement, pour le « top X % » de la carte.
+    conn = get_connection()
+    total = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"] or 1
+    better = conn.execute("SELECT COUNT(*) c FROM users WHERE rank_points > ?", (pts,)).fetchone()["c"]
+    conn.close()
+    return {
+        "ladder": rank_config.ladder(pts, cfg),
+        "rank_points": pts,
+        "current": rank_config.tier_info(pts, cfg),
+        "next": rank_config.next_rank(pts, cfg),
+        "rank_progress": rank_config.rank_progress(pts, cfg),
+        "top_percent": max(1, round((better + 1) / total * 100)),
     }
 
 

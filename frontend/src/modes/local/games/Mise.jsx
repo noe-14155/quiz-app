@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Users } from "lucide-react";
-import { cardWrap, COLORS, FONT_DISPLAY } from "../../../design/theme";
+import { cardWrap, COLORS, FONT_DISPLAY, tint } from "../../../design/theme";
 import TopBar from "../../../components/TopBar";
+import { inputStyle } from "../../../components/PageTitle";
 import Button from "../../../components/Button";
 import AnswerGrid from "../../../components/AnswerGrid";
 import QuitConfirmModal from "../../../components/QuitConfirmModal";
@@ -138,19 +139,19 @@ export default function Mise({ screen, onNavigate }) {
     return (
       <div style={cardWrap}>
         <TopBar screen="mise-setup" onNavigate={onNavigate} />
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>Tu te mets combien ?</h2>
+        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: "0 0 4px" }}>Tu te mets combien ?</h2>
         <p style={{ color: COLORS.muted, margin: "0 0 20px", fontSize: 14 }}>
           Thème tiré au sort chaque manche. Mise 1 à 10 (valeur déjà prise interdite) : ta mise détermine la difficulté et les points gagnés.
         </p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPlayer()}
             placeholder="Prénom du joueur"
-            style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
+            style={inputStyle({ flex: 1 })} />
           <Button onClick={addPlayer} disabled={!nameInput.trim()} style={{ padding: "0 18px" }}>+</Button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
           {players.map((p, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", background: COLORS.card, borderRadius: 12, padding: "10px 14px" }}>
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", background: COLORS.card, borderRadius: 14, padding: "10px 14px" }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</span>
               <button onClick={() => removePlayer(i)} style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer" }}>×</button>
             </div>
@@ -158,8 +159,8 @@ export default function Mise({ screen, onNavigate }) {
         </div>
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Objectif de points</p>
         <input type="number" min={10} step={5} value={target} onChange={(e) => setTarget(Math.max(10, Number(e.target.value) || 10))}
-          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 20, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
-        <Button onClick={start} disabled={players.length < 2} style={{ width: "100%" }}>Commencer</Button>
+          style={inputStyle({ marginBottom: 20 })} />
+        <Button onClick={start} disabled={players.length < 2}>Commencer</Button>
       </div>
     );
   }
@@ -167,7 +168,7 @@ export default function Mise({ screen, onNavigate }) {
   const scoreboard = (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
       {players.map((p, i) => (
-        <div key={i} style={{ background: COLORS.card, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 700 }}>
+        <div key={i} style={{ background: COLORS.card, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: 800, border: `1px solid ${COLORS.cardAlt}` }}>
           {p.name} <span style={{ color: COLORS.gold }}>{p.score}</span>
         </div>
       ))}
@@ -185,14 +186,15 @@ export default function Mise({ screen, onNavigate }) {
         <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Manche {round} · Objectif {target} pts</span>
         {scoreboard}
         <p style={{ fontSize: 15, color: COLORS.gold, fontWeight: 700, margin: "12px 0 4px", textTransform: "uppercase" }}>{theme}</p>
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700, margin: "0 0 16px" }}>{bidder.name}</h2>
+        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 800, margin: "0 0 16px" }}>{bidder.name}</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
           {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
             const isTaken = taken.has(n);
             return (
               <button key={n} onClick={() => !isTaken && submitBid(n)} disabled={isTaken}
-                style={{ padding: "12px 0", borderRadius: 10, border: `2px solid ${COLORS.cardAlt}`,
-                  background: isTaken ? COLORS.bg : COLORS.card, opacity: isTaken ? 0.4 : 1, fontWeight: 700, cursor: isTaken ? "not-allowed" : "pointer" }}>
+                style={{ padding: "13px 0", borderRadius: 14, border: `1.5px solid ${COLORS.cardAlt}`,
+                  background: isTaken ? COLORS.bg : COLORS.card, color: COLORS.text, fontFamily: FONT_DISPLAY,
+                  opacity: isTaken ? 0.4 : 1, fontWeight: 800, fontSize: 15, cursor: isTaken ? "not-allowed" : "pointer" }}>
                 {n}
               </button>
             );
@@ -219,22 +221,22 @@ export default function Mise({ screen, onNavigate }) {
         <TopBar screen="mise-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
         {scoreboard}
         <p style={{ fontSize: 15, color: COLORS.gold, fontWeight: 700, margin: "0 0 4px", textTransform: "uppercase" }}>{currentQuestion.theme}</p>
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 16px" }}>{player.name}</h2>
+        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: "0 0 16px" }}>{player.name}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.card, borderRadius: 14, padding: "14px 16px", marginBottom: 18 }}>
           <Users size={18} color={COLORS.gold} />
           <p style={{ margin: 0, fontSize: 13, color: COLORS.muted }}>Misé à {bid} points</p>
         </div>
-        <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, margin: "0 0 18px" }}>{currentQuestion.question}</h3>
+        <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 800, margin: "0 0 18px" }}>{currentQuestion.question}</h3>
         <AnswerGrid choix={currentQuestion.choix} answered={answered} correctIndex={answered !== null ? currentQuestion.bonne_reponse - 1 : null} onPick={pick} />
         {answered !== null && (
           <>
-            <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 18 }}>
+            <div style={{ background: COLORS.card, borderRadius: 18, padding: 16, marginBottom: 18 }}>
               <p style={{ margin: 0, fontSize: 14, color: COLORS.muted }}>{currentQuestion.explication}</p>
               <p style={{ margin: "8px 0 0", fontWeight: 700, color: answered === currentQuestion.bonne_reponse - 1 ? COLORS.success : COLORS.danger }}>
                 {answered === currentQuestion.bonne_reponse - 1 ? `+${bid} points pour ${player.name}` : "Pas de points cette fois"}
               </p>
             </div>
-            <Button onClick={nextStep} style={{ width: "100%" }}>
+            <Button onClick={nextStep}>
               {questionStep + 1 >= bidOrder.length ? "Manche suivante" : "Joueur suivant"}
             </Button>
           </>
@@ -247,10 +249,10 @@ export default function Mise({ screen, onNavigate }) {
   return (
     <div style={cardWrap}>
       <TopBar screen="mise-results" onNavigate={onNavigate} />
-      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 18px" }}>Résultats</h2>
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: "0 0 18px" }}>Résultats</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
         {sorted.map((p, i) => (
-          <div key={p.name} style={{ display: "flex", justifyContent: "space-between", background: i === 0 ? "rgba(59,130,246,0.12)" : COLORS.card, border: i === 0 ? `2px solid ${COLORS.gold}` : "2px solid transparent", borderRadius: 12, padding: "10px 16px" }}>
+          <div key={p.name} style={{ display: "flex", justifyContent: "space-between", background: i === 0 ? tint(COLORS.gold, 10) : COLORS.card, border: `1px solid ${i === 0 ? COLORS.gold : COLORS.cardAlt}`, borderRadius: 14, padding: "11px 16px" }}>
             <span style={{ fontWeight: 700 }}>{i + 1}. {p.name}</span>
             <span style={{ fontWeight: 700, color: COLORS.muted }}>{p.score} pts</span>
           </div>

@@ -2,13 +2,44 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quiz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>SquizzYourBrain</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Nunito:wght@400;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Animations partagées, référencées depuis les styles en ligne des composants. */
+      @keyframes sqgrad { 0% { background-position: 0% 50% } 100% { background-position: 300% 50% } }
+      @keyframes sqrise { 0% { transform: translateY(16px); opacity: 0 } 100% { transform: translateY(0); opacity: 1 } }
+      @keyframes sqpop { 0% { transform: scale(.7); opacity: 0 } 70% { transform: scale(1.07) } 100% { transform: scale(1); opacity: 1 } }
+      @keyframes sqbounce { 0% { transform: scale(1) } 30% { transform: scale(1.06) } 55% { transform: scale(.97) } 100% { transform: scale(1) } }
+      @keyframes sqshake { 0%, 100% { transform: translateX(0) } 25% { transform: translateX(-4px) } 75% { transform: translateX(4px) } }
+      @keyframes sqfloaty { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+      body {
+        font-family: 'Nunito', system-ui, sans-serif;
+        background: #eceef4;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      /* La carte principale de l'app est centrée ; sur mobile elle prend tout l'écran. */
+      #root { width: 100%; max-width: 480px; }
+
+      /* Les boutons réagissent au toucher partout dans l'app. */
+      button { font-family: inherit; transition: transform .15s; }
+      button:active:not(:disabled) { transform: scale(.97); }
+
+      /* Masque les barres de défilement sans bloquer le scroll. */
+      body { scrollbar-width: none; }
+      body::-webkit-scrollbar { display: none; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

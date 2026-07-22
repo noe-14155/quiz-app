@@ -5,11 +5,10 @@ import Home from "./Home";
 import Login from "./Login";
 import Chill from "./modes/chill/Chill";
 import Ranked from "./modes/ranked/Ranked";
-import Leaderboard from "./modes/ranked/Leaderboard";
+import Ranks from "./modes/ranked/Ranks";
 import LocalChoice from "./modes/local/LocalChoice";
 import Mise from "./modes/local/games/Mise";
 import QuestionsMode from "./modes/local/games/QuestionsMode";
-import Multi from "./modes/multi/Multi";
 import Daily from "./modes/daily/Daily";
 import { Profile, PublicProfile } from "./profile/Profile";
 import Admin from "./admin/Admin";
@@ -20,6 +19,16 @@ function Router() {
   const { loading } = useAuth();
 
   function navigate(next) {
+    setScreen(next);
+  }
+
+  // Certains écrans naviguent avec un argument (ex: ouvrir le profil d'un joueur).
+  function navigateWithArg(next, arg) {
+    if (next === "public-profile" && arg) {
+      setViewedPseudo(arg);
+      setScreen("public-profile");
+      return;
+    }
     setScreen(next);
   }
 
@@ -35,14 +44,13 @@ function Router() {
 
   if (screen.startsWith("chill-")) return <Chill screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("ranked-")) return <Ranked screen={screen} onNavigate={navigate} />;
-  if (screen === "leaderboard") return <Leaderboard screen={screen} onNavigate={navigate} onViewProfile={viewProfile} />;
+  if (screen === "ranks" || screen === "leaderboard") return <Ranks onNavigate={navigateWithArg} />;
 
   if (screen === "local-choice") return <LocalChoice screen={screen} onNavigate={navigate} />;
   if (screen === "daily") return <Daily screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("mise-")) return <Mise screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("questions-mode-")) return <QuestionsMode screen={screen} onNavigate={navigate} />;
 
-  if (screen.startsWith("multi-")) return <Multi screen={screen} onNavigate={navigate} />;
 
   if (screen === "profile") return <Profile screen={screen} onNavigate={navigate} />;
   if (screen === "public-profile") return <PublicProfile screen={screen} onNavigate={navigate} pseudo={viewedPseudo} />;

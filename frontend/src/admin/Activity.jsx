@@ -7,9 +7,9 @@ import LineChart from "../components/LineChart";
 
 function Stat({ icon, value, label }) {
   return (
-    <div style={{ background: COLORS.card, borderRadius: 12, padding: "10px 14px", flex: 1, minWidth: 110 }}>
+    <div style={{ background: COLORS.card, borderRadius: 14, padding: "10px 14px", flex: 1, minWidth: 110 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.gold, marginBottom: 2 }}>{icon}</div>
-      <p style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: FONT_DISPLAY, color: COLORS.text }}>{value}</p>
+      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, fontFamily: FONT_DISPLAY, color: COLORS.text }}>{value}</p>
       <p style={{ margin: 0, fontSize: 11, color: COLORS.muted }}>{label}</p>
     </div>
   );
@@ -82,7 +82,7 @@ export default function Activity() {
         <Collapsible title="Joueurs" count={data.joueurs.length}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {data.joueurs.map((j) => (
-              <div key={j.pseudo} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "8px 14px" }}>
+              <div key={j.pseudo} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 14, padding: "9px 14px" }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>{j.pseudo}</span>
                 <span style={{ fontSize: 11, color: COLORS.muted }}>
                   {j.nb_parties || 0} partie{(j.nb_parties || 0) > 1 ? "s" : ""} · joué {timeAgo(j.derniere_partie)}

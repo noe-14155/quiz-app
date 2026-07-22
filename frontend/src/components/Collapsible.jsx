@@ -10,13 +10,13 @@ import { COLORS, FONT_DISPLAY } from "../design/theme";
 export default function Collapsible({ title, count, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ border: `1px solid ${COLORS.cardAlt}`, borderRadius: 12, marginBottom: 12, overflow: "hidden" }}>
+    <div style={{ border: `1px solid ${COLORS.cardAlt}`, borderRadius: 16, marginBottom: 12, overflow: "hidden" }}>
       <button
         onClick={() => setOpen((v) => !v)}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
           padding: "12px 14px", background: COLORS.card, border: "none", cursor: "pointer",
-          fontFamily: FONT_DISPLAY, fontSize: 15, fontWeight: 700, color: COLORS.text,
+          fontFamily: FONT_DISPLAY, fontSize: 15, fontWeight: 800, color: COLORS.text,
         }}
       >
         <span>

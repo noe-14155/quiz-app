@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { cardWrap, COLORS, FONT_DISPLAY } from "../../../design/theme";
+import { cardWrap, COLORS, FONT_DISPLAY, tint } from "../../../design/theme";
 import TopBar from "../../../components/TopBar";
+import { inputStyle } from "../../../components/PageTitle";
 import Button from "../../../components/Button";
 import QuitConfirmModal from "../../../components/QuitConfirmModal";
 import { Check } from "lucide-react";
@@ -95,18 +96,18 @@ export default function QuestionsMode({ screen, onNavigate }) {
     return (
       <div style={cardWrap}>
         <TopBar screen="questions-mode-setup" onNavigate={onNavigate} />
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>Mode Questions</h2>
+        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: "0 0 4px" }}>Mode Questions</h2>
         <p style={{ color: COLORS.muted, margin: "0 0 20px", fontSize: 14 }}>Ajoute les joueurs, choisis les thèmes, la difficulté et l'objectif de points.</p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPlayer()}
             placeholder="Prénom du joueur"
-            style={{ flex: 1, padding: "12px 14px", borderRadius: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
+            style={inputStyle({ flex: 1 })} />
           <Button onClick={addPlayer} disabled={!nameInput.trim()} style={{ padding: "0 18px" }}>+</Button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
           {players.map((p, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", background: COLORS.card, borderRadius: 12, padding: "10px 14px" }}>
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", background: COLORS.card, borderRadius: 14, padding: "10px 14px" }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</span>
               <button onClick={() => removePlayer(i)} style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer" }}>×</button>
             </div>
@@ -119,8 +120,8 @@ export default function QuestionsMode({ screen, onNavigate }) {
             const active = themes.includes(t);
             return (
               <button key={t} onClick={() => toggleTheme(t)} style={{
-                padding: "8px 16px", borderRadius: 999, border: active ? `2px solid ${COLORS.gold}` : `2px solid ${COLORS.cardAlt}`,
-                background: active ? "rgba(59,130,246,0.12)" : COLORS.card, color: active ? COLORS.gold : COLORS.text, fontWeight: 700, fontSize: 13, cursor: "pointer",
+                padding: "8px 15px", borderRadius: 20, border: `1.5px solid ${active ? COLORS.gold : COLORS.cardAlt}`,
+                background: active ? tint(COLORS.gold, 10) : COLORS.bg, color: active ? COLORS.gold : COLORS.muted, fontWeight: 800, fontSize: 13, cursor: "pointer",
               }}>{t}</button>
             );
           })}
@@ -128,10 +129,10 @@ export default function QuestionsMode({ screen, onNavigate }) {
 
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Objectif de points</p>
         <input type="number" min={5} step={5} value={target} onChange={(e) => setTarget(Math.max(5, Number(e.target.value) || 5))}
-          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 20, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
+          style={inputStyle({ marginBottom: 20 })} />
 
         {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
-        <Button onClick={start} disabled={players.length < 2 || themes.length === 0} style={{ width: "100%" }}>Commencer</Button>
+        <Button onClick={start} disabled={players.length < 2 || themes.length === 0}>Commencer</Button>
       </div>
     );
   }
@@ -139,7 +140,7 @@ export default function QuestionsMode({ screen, onNavigate }) {
   const scoreboard = (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
       {players.map((p, i) => (
-        <div key={i} style={{ background: COLORS.card, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 700 }}>
+        <div key={i} style={{ background: COLORS.card, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: 800, border: `1px solid ${COLORS.cardAlt}` }}>
           {p.name} <span style={{ color: COLORS.gold }}>{p.score}</span>
         </div>
       ))}
@@ -153,16 +154,16 @@ export default function QuestionsMode({ screen, onNavigate }) {
         <TopBar screen="questions-mode-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
         <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Question {round}</span>
         {scoreboard}
-        {!question && <Button onClick={draw} style={{ width: "100%" }}>Poser la question</Button>}
+        {!question && <Button onClick={draw}>Poser la question</Button>}
         {question && (
           <>
             <p style={{ fontSize: 15, color: COLORS.gold, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" }}>{question.theme}</p>
-            <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, margin: "0 0 18px" }}>{question.question}</h3>
+            <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 800, margin: "0 0 18px" }}>{question.question}</h3>
             {!revealed ? (
-              <Button onClick={() => setRevealed(true)} style={{ width: "100%" }}>Révéler la réponse</Button>
+              <Button onClick={() => setRevealed(true)}>Révéler la réponse</Button>
             ) : (
               <>
-                <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 18 }}>
+                <div style={{ background: COLORS.card, borderRadius: 18, padding: 16, marginBottom: 18 }}>
                   <p style={{ margin: "0 0 6px", fontWeight: 700, color: COLORS.success }}>{question.choix[question.bonne_reponse - 1]}</p>
                   <p style={{ margin: 0, fontSize: 13, color: COLORS.muted }}>{question.explication}</p>
                 </div>
@@ -174,16 +175,16 @@ export default function QuestionsMode({ screen, onNavigate }) {
                     const active = correctIds.has(i);
                     return (
                       <button key={i} onClick={() => toggleCorrect(i)} style={{
-                        padding: "10px 16px", borderRadius: 999, border: active ? `2px solid ${COLORS.success}` : `2px solid ${COLORS.cardAlt}`,
-                        background: active ? "rgba(34,197,94,0.15)" : COLORS.card, color: active ? COLORS.success : COLORS.text,
-                        fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                        padding: "10px 16px", borderRadius: 20, border: `1.5px solid ${active ? COLORS.success : COLORS.cardAlt}`,
+                        background: active ? tint(COLORS.success, 12) : COLORS.bg, color: active ? COLORS.success : COLORS.muted,
+                        fontWeight: 800, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
                       }}>
                         {active && <Check size={14} />}{p.name}
                       </button>
                     );
                   })}
                 </div>
-                <Button onClick={validateRound} style={{ width: "100%" }}>Question suivante</Button>
+                <Button onClick={validateRound}>Question suivante</Button>
               </>
             )}
           </>
@@ -196,10 +197,10 @@ export default function QuestionsMode({ screen, onNavigate }) {
   return (
     <div style={cardWrap}>
       <TopBar screen="questions-mode-results" onNavigate={onNavigate} />
-      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 18px" }}>Résultats</h2>
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: "0 0 18px" }}>Résultats</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
         {sorted.map((p, i) => (
-          <div key={p.name} style={{ display: "flex", justifyContent: "space-between", background: i === 0 ? "rgba(59,130,246,0.12)" : COLORS.card, border: i === 0 ? `2px solid ${COLORS.gold}` : "2px solid transparent", borderRadius: 12, padding: "10px 16px" }}>
+          <div key={p.name} style={{ display: "flex", justifyContent: "space-between", background: i === 0 ? tint(COLORS.gold, 10) : COLORS.card, border: `1px solid ${i === 0 ? COLORS.gold : COLORS.cardAlt}`, borderRadius: 14, padding: "11px 16px" }}>
             <span style={{ fontWeight: 700 }}>{i + 1}. {p.name}</span>
             <span style={{ fontWeight: 700, color: COLORS.muted }}>{p.score} pts</span>
           </div>

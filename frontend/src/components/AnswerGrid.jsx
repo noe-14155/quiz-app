@@ -1,50 +1,79 @@
-import { Circle, Square, Triangle, Diamond, Check, X } from "lucide-react";
-import { COLORS, FONT_BODY } from "../design/theme";
+import { Check, X } from "lucide-react";
+import { COLORS, FONT_DISPLAY } from "../design/theme";
 
+/**
+ * Grille de réponses façon plateau de jeu : 4 tuiles pleines et colorées,
+ * chacune identifiée par une forme (losange, rond, triangle, carré).
+ * - bonne réponse   : rebondit, liseré vert
+ * - mauvaise choisie: tremble
+ * - non choisies    : estompées
+ */
 const SHAPES = [
-  { Icon: Circle, color: COLORS.shapeA },
-  { Icon: Square, color: COLORS.shapeB },
-  { Icon: Triangle, color: COLORS.shapeC },
-  { Icon: Diamond, color: COLORS.shapeD },
+  { symbol: "◆", key: "shapeA" },
+  { symbol: "●", key: "shapeB" },
+  { symbol: "▲", key: "shapeC" },
+  { symbol: "■", key: "shapeD" },
 ];
 
 export default function AnswerGrid({ choix, answered, correctIndex, onPick, revealCorrectness = true }) {
+  const isAnswered = answered !== null && answered !== undefined;
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 12 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 13, marginBottom: 12 }}>
       {choix.map((choice, i) => {
-        const { Icon, color } = SHAPES[i];
-        const isAnswered = answered !== null && answered !== undefined;
+        const shape = SHAPES[i % 4];
+        const color = COLORS[shape.key];
         const isCorrect = correctIndex !== undefined && correctIndex !== null && i === correctIndex;
         const isPicked = i === answered;
-        let bg = COLORS.card;
-        let border = COLORS.cardAlt;
-        if (revealCorrectness) {
-          if (isAnswered && isCorrect) {
-            bg = "rgba(34,197,94,0.15)";
-            border = COLORS.success;
-          } else if (isAnswered && isPicked && !isCorrect) {
-            bg = "rgba(239,68,68,0.15)";
-            border = COLORS.danger;
+
+        let extra = {};
+        let mark = null;
+        if (isAnswered && revealCorrectness) {
+          if (isCorrect) {
+            extra = { animation: "sqbounce .45s both", boxShadow: `0 0 0 3px ${COLORS.bg}, 0 0 0 6px ${COLORS.success}` };
+            mark = "correct";
+          } else if (isPicked) {
+            extra = { animation: "sqshake .4s both" };
+            mark = "wrong";
+          } else {
+            extra = { opacity: 0.32, filter: "saturate(.35)" };
           }
         } else if (isAnswered && isPicked) {
-          bg = "rgba(59,130,246,0.12)";
-          border = COLORS.gold;
+          // Mode sans révélation (journalier) : on marque juste le choix.
+          extra = { boxShadow: `0 0 0 3px ${COLORS.bg}, 0 0 0 6px ${COLORS.text}` };
+        } else if (isAnswered) {
+          extra = { opacity: 0.45 };
         }
+
         return (
           <button
             key={i}
             onClick={() => onPick(i)}
             disabled={isAnswered}
             style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "14px 12px", borderRadius: 14,
-              border: `2px solid ${border}`, background: bg, color: COLORS.text, textAlign: "left",
-              fontFamily: FONT_BODY, fontWeight: 700, fontSize: 14, cursor: isAnswered ? "default" : "pointer",
+              minHeight: 92,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              gap: 10,
+              border: "none",
+              borderRadius: 18,
+              padding: 14,
+              textAlign: "left",
+              cursor: isAnswered ? "default" : "pointer",
+              color: "#fff",
+              fontFamily: FONT_DISPLAY,
+              background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+              transition: "transform .15s, filter .2s, opacity .2s",
+              ...extra,
             }}
           >
-            <Icon size={18} color={color} style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1 }}>{choice}</span>
-            {isAnswered && revealCorrectness && isCorrect && <Check size={18} color={COLORS.success} />}
-            {isAnswered && revealCorrectness && isPicked && !isCorrect && <X size={18} color={COLORS.danger} />}
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 20, lineHeight: 1 }}>
+              <span>{shape.symbol}</span>
+              {mark === "correct" && <Check size={18} color="#fff" strokeWidth={3} />}
+              {mark === "wrong" && <X size={18} color="#fff" strokeWidth={3} />}
+            </span>
+            <span style={{ fontWeight: 800, fontSize: 15, lineHeight: 1.15 }}>{choice}</span>
           </button>
         );
       })}

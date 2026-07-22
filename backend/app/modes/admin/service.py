@@ -8,24 +8,20 @@ from app.profile.activity import EVENTS as EVENT_LABELS
 DEFAULT_SETTINGS = {
     # Barème du mode classé : bornes de la courbe (le code interpole entre le
     # bas et le haut du classement). Voir rank_config.py.
-    "ranked_gain_low": "25",       # gain d'une bonne réponse au rang le plus bas (Fer)
-    "ranked_gain_high": "6",       # gain au rang le plus haut (Légende I) ; plancher en Unreal
+    "ranked_gain_low": "25",       # gain d'une bonne réponse au rang le plus bas (Neurone)
+    "ranked_gain_high": "6",       # gain au rang le plus haut (Prodige I)
     "ranked_loss_low": "6",        # malus d'une mauvaise réponse au plus bas
-    "ranked_loss_high": "22",      # malus au plus haut (Légende I) ; augmente encore en Unreal
-    "ranked_loss_pass": "3",       # coût d'un « passer » (uniquement sous Diamant, où c'est permis)
-    "ranked_points_per_tier": "200",  # points par palier (III→II→I)
-    "ranked_daily_decay": "50",    # perte quotidienne à partir de Diamant III
+    "ranked_loss_high": "22",      # malus au rang le plus haut (Prodige I)
+    "ranked_loss_pass": "3",       # coût d'un « passer » (uniquement sous Génie, où c'est permis)
+    "ranked_daily_decay": "50",    # perte quotidienne à partir de Génie III
     "ranked_time_per_question": "15",
-    "multi_time_per_question": "15",
-    "multi_reveal_seconds": "5",
     "mode_chill_enabled": "1",
     "mode_ranked_enabled": "1",
     "mode_local_enabled": "1",
-    "mode_multi_enabled": "1",
     "mode_daily_enabled": "1",
 }
 
-MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_multi_enabled", "mode_daily_enabled"]
+MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_daily_enabled"]
 
 
 # Cache mémoire des réglages : is_mode_enabled() est appelé sur CHAQUE requête
@@ -75,7 +71,18 @@ def list_users(limit: int = 100, offset: int = 0):
     ).fetchall()
     total = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
     conn.close()
-    return {"users": [dict(r) for r in rows], "total": total}
+    # Le rang est RECALCULÉ depuis les points, jamais lu depuis la colonne
+    # rank_tier : celle-ci peut être périmée si les seuils de rang ont changé
+    # (elle n'est réécrite qu'à la partie suivante du joueur).
+    from app.modes.ranked import rank_config
+    users = []
+    for r in rows:
+        d = dict(r)
+        d["rank_tier"] = rank_config.tier_from_points(d["rank_points"])
+        info = rank_config.tier_info(d["rank_points"])
+        d["rank_name"] = f"{info['rank']} {info['palier']}"
+        users.append(d)
+    return {"users": users, "total": total}
 
 
 def reset_user(user_id: int):
@@ -139,9 +146,8 @@ def get_stats():
     conn = get_connection()
     nb_users = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
     nb_parties = conn.execute("SELECT COUNT(*) as c FROM parties").fetchone()["c"]
-    nb_rooms = conn.execute("SELECT COUNT(*) as c FROM multi_rooms").fetchone()["c"]
     conn.close()
-    return {"nb_comptes": nb_users, "nb_parties_classees": nb_parties, "nb_parties_multi": nb_rooms}
+    return {"nb_comptes": nb_users, "nb_parties_classees": nb_parties}
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +168,7 @@ def get_activity(days: int = 14, feed_limit: int = 40):
     # plusieurs parties dans la journée ne compte qu'une fois.
     joueurs_par_jour = conn.execute(
         "SELECT substr(created_at, 1, 10) AS jour, COUNT(DISTINCT pseudo) AS n FROM activity_log "
-        "WHERE (event LIKE '%\\_start' ESCAPE '\\' OR event = 'multi_create') "
+        "WHERE (event LIKE '%\\_start' ESCAPE '\\') "
         "AND pseudo IS NOT NULL AND created_at >= date('now', ?) GROUP BY jour ORDER BY jour",
         (f"-{days} days",),
     ).fetchall()
@@ -170,7 +176,7 @@ def get_activity(days: int = 14, feed_limit: int = 40):
     # Parties jouées par jour (source : activity_log, tous événements de partie).
     parties_par_jour = conn.execute(
         "SELECT substr(created_at, 1, 10) AS jour, COUNT(*) AS n FROM activity_log "
-        "WHERE (event LIKE '%\\_start' ESCAPE '\\' OR event = 'multi_create') "
+        "WHERE (event LIKE '%\\_start' ESCAPE '\\') "
         "AND created_at >= date('now', ?) GROUP BY jour ORDER BY jour",
         (f"-{days} days",),
     ).fetchall()
@@ -178,7 +184,7 @@ def get_activity(days: int = 14, feed_limit: int = 40):
     # Répartition par mode (source : activity_log)
     par_mode = conn.execute(
         "SELECT event, COUNT(*) AS n FROM activity_log "
-        "WHERE event LIKE '%_start' OR event = 'multi_create' GROUP BY event ORDER BY n DESC"
+        "WHERE event LIKE '%_start' GROUP BY event ORDER BY n DESC"
     ).fetchall()
 
     # Derniers événements
@@ -190,8 +196,8 @@ def get_activity(days: int = 14, feed_limit: int = 40):
     # Joueurs : dernière connexion + nombre de connexions
     joueurs = conn.execute(
         "SELECT u.pseudo, "
-        "  (SELECT COUNT(*) FROM activity_log a WHERE a.pseudo = u.pseudo AND (a.event LIKE '%\\_start' ESCAPE '\\' OR a.event = 'multi_create')) AS nb_parties, "
-        "  (SELECT MAX(a.created_at) FROM activity_log a WHERE a.pseudo = u.pseudo AND (a.event LIKE '%\\_start' ESCAPE '\\' OR a.event = 'multi_create')) AS derniere_partie "
+        "  (SELECT COUNT(*) FROM activity_log a WHERE a.pseudo = u.pseudo AND (a.event LIKE '%\\_start' ESCAPE '\\')) AS nb_parties, "
+        "  (SELECT MAX(a.created_at) FROM activity_log a WHERE a.pseudo = u.pseudo AND (a.event LIKE '%\\_start' ESCAPE '\\')) AS derniere_partie "
         "FROM users u ORDER BY derniere_partie DESC NULLS LAST"
     ).fetchall()
 
@@ -205,7 +211,7 @@ def get_activity(days: int = 14, feed_limit: int = 40):
         ).fetchone()["c"],
         "evenements_total": conn.execute("SELECT COUNT(*) c FROM activity_log").fetchone()["c"],
         "parties_total": conn.execute(
-            "SELECT COUNT(*) c FROM activity_log WHERE event LIKE '%\\_start' ESCAPE '\\' OR event = 'multi_create'"
+            "SELECT COUNT(*) c FROM activity_log WHERE event LIKE '%\\_start' ESCAPE '\\'"
         ).fetchone()["c"],
     }
     conn.close()

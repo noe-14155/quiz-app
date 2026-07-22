@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { CalendarDays, Trophy, Check, X as XIcon } from "lucide-react";
-import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY } from "../../design/theme";
+import { CalendarDays, Check, X as XIcon } from "lucide-react";
+import { cardWrap, COLORS, FONT_DISPLAY, gradientText, tint } from "../../design/theme";
 import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
 import SearchLink from "../../components/SearchLink";
+import QuizHeader, { QuizTopLine, QuizQuestion } from "../../components/QuizHeader";
+import BigScore from "../../components/BigScore";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 
@@ -71,7 +73,7 @@ export default function Daily({ screen, onNavigate }) {
         {lb.map((e, i) => (
           <div key={e.pseudo} style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
-            background: i === 0 ? "rgba(59,130,246,0.12)" : COLORS.card,
+            background: i === 0 ? tint(COLORS.gold, 10) : COLORS.card,
             border: i === 0 ? `2px solid ${COLORS.gold}` : "2px solid transparent",
             borderRadius: 12, padding: "9px 14px",
           }}>
@@ -127,20 +129,20 @@ export default function Daily({ screen, onNavigate }) {
     return (
       <div style={cardWrap}>
         <TopBar screen={screen} onNavigate={onNavigate} />
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <CalendarDays size={26} color={COLORS.gold} style={{ marginBottom: 6 }} />
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: 0, textTransform: "uppercase" }}>Défi du {dateLabel}</p>
-          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 38, fontWeight: 700, margin: "4px 0 0" }}>{result.score} / {result.total}</h2>
-          {!result.recorded && <p style={{ fontSize: 12, color: COLORS.muted, margin: "6px 0 0" }}>
-            {user ? "Tu avais déjà joué aujourd'hui — ce score n'est pas comptabilisé." : "Connecte-toi pour apparaître au classement."}
-          </p>}
-        </div>
+        <BigScore
+          score={result.score}
+          total={result.total}
+          label={`Défi du ${dateLabel}`}
+          subtitle={!result.recorded
+            ? (user ? "Tu avais déjà joué aujourd'hui — ce score n'est pas comptabilisé." : "Connecte-toi pour apparaître au classement.")
+            : "Reviens demain pour un nouveau défi !"}
+        />
 
         <CorrectionBlock details={result.details} />
 
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Classement du jour</p>
         <div style={{ marginBottom: 20 }}><LeaderboardBlock lb={result.leaderboard} /></div>
-        <Button onClick={() => onNavigate("home")} style={{ width: "100%" }}>Accueil</Button>
+        <Button onClick={() => onNavigate("home")}>Accueil</Button>
       </div>
     );
   }
@@ -153,15 +155,15 @@ export default function Daily({ screen, onNavigate }) {
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <CalendarDays size={26} color={COLORS.gold} style={{ marginBottom: 6 }} />
           <p style={{ fontSize: 13, color: COLORS.muted, margin: 0, textTransform: "uppercase" }}>Défi du {dateLabel}</p>
-          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700, margin: "4px 0 0" }}>
-            Ton score : {data.already_played.score}/{data.already_played.total}
+          <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 44, fontWeight: 800, margin: "4px 0 0", ...gradientText(120) }}>
+            {data.already_played.score}/{data.already_played.total}
           </h2>
           <p style={{ fontSize: 13, color: COLORS.muted, margin: "6px 0 0" }}>Reviens demain pour un nouveau défi !</p>
         </div>
 
         {data.review && (
           <>
-            <Button variant="secondary" onClick={() => setShowReview((v) => !v)} style={{ width: "100%", marginBottom: 16 }}>
+            <Button variant="secondary" onClick={() => setShowReview((v) => !v)} style={{ marginBottom: 16 }}>
               {showReview ? "Masquer mes réponses" : "Revoir mes réponses"}
             </Button>
             {showReview && <CorrectionBlock details={data.review} />}
@@ -170,7 +172,7 @@ export default function Daily({ screen, onNavigate }) {
 
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Classement du jour</p>
         <div style={{ marginBottom: 20 }}><LeaderboardBlock lb={data.leaderboard} /></div>
-        <Button variant="secondary" onClick={() => onNavigate("home")} style={{ width: "100%" }}>Accueil</Button>
+        <Button variant="secondary" onClick={() => onNavigate("home")}>Accueil</Button>
       </div>
     );
   }
@@ -210,22 +212,21 @@ export default function Daily({ screen, onNavigate }) {
   return (
     <div style={cardWrap}>
       <TopBar screen={screen} onNavigate={onNavigate} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Défi du jour · {index + 1}/{data.questions.length}</span>
-        <span style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700 }}>{q.theme}</span>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1, height: 6, borderRadius: 3, background: COLORS.cardAlt, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${timePct}%`, background: timeLeft <= 5 ? COLORS.danger : COLORS.gold, transition: "width 0.25s linear" }} />
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 700, color: timeLeft <= 5 ? COLORS.danger : COLORS.muted, minWidth: 28, textAlign: "right" }}>{timeLeft}s</span>
-      </div>
-      <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, lineHeight: 1.35, margin: "0 0 20px" }}>{q.question}</h3>
+      <QuizTopLine index={index} total={data.questions.length} />
+      <QuizHeader
+        index={index}
+        total={data.questions.length}
+        rightLabel={`${timeLeft}s`}
+        rightDanger={timeLeft <= 5}
+        progressPct={timePct}
+        tags={[{ label: q.theme, color: COLORS.gold }, { label: "Défi du jour", color: COLORS.accent2 }]}
+      />
+      <QuizQuestion>{q.question}</QuizQuestion>
 
       <AnswerGrid choix={q.choix} answered={answered} onPick={pick} revealCorrectness={false} />
 
       {answered !== null && (
-        <Button onClick={goNext} style={{ width: "100%", marginTop: 4 }}>
+        <Button onClick={goNext} style={{ marginTop: 4 }}>
           {index + 1 < data.questions.length ? "Question suivante" : "Voir mon score"}
         </Button>
       )}
