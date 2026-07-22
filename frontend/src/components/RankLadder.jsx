@@ -5,18 +5,22 @@ import { COLORS, FONT_DISPLAY, FONT_BODY, rankGradient, rankRange, tint } from "
 const ICONS = [Sparkles, Search, Lightbulb, User, Zap, Crown];
 
 /**
- * « L'échelle » : la liste des rangs du plus haut au plus bas, avec l'état de
- * chacun — dépassé (coche), rang actuel (surligné, badge TOI) ou pas encore
- * atteint (cadenas).
+ * « L'échelle » : les rangs du plus haut au plus bas, reliés par un trait
+ * vertical qui matérialise la montée. Le rang atteint est plein et coloré,
+ * les suivants sont estompés — on voit d'un coup d'œil où l'on en est.
  */
 export default function RankLadder({ ladder, ranks }) {
   if (!ladder || ladder.length === 0) return null;
-
-  // Du plus haut au plus bas, comme une vraie échelle.
-  const rows = [...ladder].reverse();
+  const rows = [...ladder].reverse(); // du sommet vers le bas
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+    <div style={{ position: "relative" }}>
+      {/* Trait de liaison : la « rampe » de l'échelle */}
+      <span style={{
+        position: "absolute", left: 19, top: 22, bottom: 22, width: 2,
+        background: COLORS.cardAlt, borderRadius: 1,
+      }} />
+
       {rows.map((row) => {
         const meta = ranks.find((r) => r.name === row.rank) || ranks[0];
         const Icon = ICONS[ranks.indexOf(meta)] || Sparkles;
@@ -27,55 +31,47 @@ export default function RankLadder({ ladder, ranks }) {
           <div
             key={row.rank}
             style={{
-              display: "flex", alignItems: "center", gap: 13, borderRadius: 16, padding: "12px 14px",
-              border: `${isCurrent ? 2 : 1.5}px solid ${isCurrent ? COLORS.accent3 : COLORS.cardAlt}`,
-              background: isCurrent ? tint(COLORS.accent3, 8) : COLORS.card,
-              opacity: isLocked ? 0.62 : 1,
-              animation: isCurrent ? "sqfloaty 3s ease-in-out infinite" : "none",
+              position: "relative", display: "flex", alignItems: "center", gap: 12,
+              padding: "7px 0", opacity: isLocked ? 0.5 : 1,
             }}
           >
-            <div style={{
-              width: 40, height: 40, borderRadius: 13, flexShrink: 0,
+            {/* Pastille sur la rampe */}
+            <span style={{
+              width: 40, height: 40, borderRadius: 13, flexShrink: 0, zIndex: 1,
               display: "flex", alignItems: "center", justifyContent: "center",
-              background: isLocked ? COLORS.cardAlt : rankGradient(meta),
+              background: isLocked ? COLORS.soft : rankGradient(meta),
+              boxShadow: isCurrent ? `0 0 0 3px ${COLORS.bg}, 0 0 0 5px ${meta.color2 || meta.color}` : "none",
             }}>
-              <Icon size={19} color={isLocked ? COLORS.muted : "#fff"} />
-            </div>
+              <Icon size={18} color={isLocked ? COLORS.muted : "#fff"} />
+            </span>
 
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, display: "block", color: COLORS.text }}>
-                {row.rank}
-              </b>
-              <small style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 11.5, color: COLORS.muted }}>
-                {rankRange({ min: row.min, max: row.max })}
-              </small>
-            </div>
+            <div style={{
+              flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10,
+              background: isCurrent ? tint(meta.color2 || meta.color, 10) : "transparent",
+              border: isCurrent ? `1.5px solid ${meta.color2 || meta.color}` : "1.5px solid transparent",
+              borderRadius: 14, padding: isCurrent ? "8px 12px" : "8px 0",
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, display: "block", color: COLORS.text }}>
+                  {row.rank}
+                </b>
+                <small style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 11.5, color: COLORS.muted }}>
+                  {rankRange({ min: row.min, max: row.max })}
+                </small>
+              </div>
 
-            {isCurrent && (
-              <span style={{
-                background: `linear-gradient(110deg, ${COLORS.gold}, ${COLORS.accent2})`, color: "#fff",
-                borderRadius: 20, padding: "5px 12px", fontFamily: FONT_BODY, fontWeight: 800,
-                fontSize: 11, letterSpacing: 0.6, flexShrink: 0,
-              }}>
-                TOI
-              </span>
-            )}
-            {row.state === "done" && (
-              <span style={{
-                width: 26, height: 26, borderRadius: 9, flexShrink: 0, background: tint(COLORS.success, 15),
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Check size={15} color={COLORS.success} />
-              </span>
-            )}
-            {isLocked && (
-              <span style={{
-                width: 26, height: 26, borderRadius: 9, flexShrink: 0, background: COLORS.soft,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Lock size={14} color={COLORS.muted} />
-              </span>
-            )}
+              {isCurrent && (
+                <span style={{
+                  background: rankGradient(meta), color: "#fff", borderRadius: 20,
+                  padding: "4px 11px", fontFamily: FONT_BODY, fontWeight: 800,
+                  fontSize: 10.5, letterSpacing: 0.6, flexShrink: 0,
+                }}>
+                  TOI
+                </span>
+              )}
+              {row.state === "done" && <Check size={16} color={COLORS.success} style={{ flexShrink: 0 }} />}
+              {isLocked && <Lock size={14} color={COLORS.muted} style={{ flexShrink: 0 }} />}
+            </div>
           </div>
         );
       })}

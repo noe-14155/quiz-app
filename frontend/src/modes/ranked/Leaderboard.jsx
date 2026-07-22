@@ -1,9 +1,63 @@
 import { useEffect, useState } from "react";
-import { cardWrap, COLORS, FONT_DISPLAY, tierInfo } from "../../design/theme";
-import TopBar from "../../components/TopBar";
+import { ChevronLeft } from "lucide-react";
+import {
+  cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, rankGradient, tint,
+} from "../../design/theme";
 import { apiFetch } from "../../api/client";
+import { useAuth } from "../../auth/AuthContext";
 
-export default function Leaderboard({ screen, onNavigate, onViewProfile }) {
+/** Ligne du classement : la position domine, le rang n'est qu'une pastille. */
+function PlayerRow({ player, position, isMe, onClick }) {
+  const t = tierInfo(player.rank_tier);
+  const podium = position <= 3;
+  const medaille = ["#FFC94D", "#C3CBD3", "#D9A066"][position - 1];
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 14,
+        background: isMe ? tint(COLORS.gold, 8) : "transparent",
+        border: `1px solid ${isMe ? COLORS.gold : "transparent"}`,
+        borderBottom: isMe ? `1px solid ${COLORS.gold}` : `1px solid ${COLORS.cardAlt}`,
+        cursor: "pointer",
+      }}
+    >
+      <span style={{
+        width: 26, height: 26, borderRadius: 9, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: podium ? medaille : "transparent",
+        color: podium ? "#fff" : COLORS.muted,
+        fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 13,
+      }}>
+        {position}
+      </span>
+
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{
+          display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14.5,
+          color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {player.pseudo}{isMe ? " (toi)" : ""}
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 1 }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: rankGradient(t.rank), flexShrink: 0 }} />
+          <span style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 11, color: COLORS.muted }}>
+            {t.rank.name} {t.palierLabel}
+          </span>
+        </span>
+      </span>
+
+      <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, color: COLORS.text, flexShrink: 0 }}>
+        {player.rank_points.toLocaleString("fr-FR")}
+      </span>
+    </div>
+  );
+}
+
+/** Écran de classement, accessible depuis le mode Classé. */
+export default function Leaderboard({ onNavigate }) {
+  const { user } = useAuth();
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,36 +69,49 @@ export default function Leaderboard({ screen, onNavigate, onViewProfile }) {
       .finally(() => setLoading(false));
   }, []);
 
+  const maPosition = user ? players.findIndex((p) => p.pseudo === user.pseudo) + 1 : 0;
+
   return (
     <div style={cardWrap}>
-      <TopBar screen={screen} onNavigate={onNavigate} />
-      <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>Classement</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0 18px" }}>
+        <button
+          onClick={() => onNavigate("ranked-setup")}
+          aria-label="Retour"
+          style={{
+            width: 36, height: 36, borderRadius: 11, background: COLORS.soft, border: "none",
+            color: COLORS.muted2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, color: COLORS.text }}>
+          Classement
+        </h2>
+      </div>
 
-      {loading && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement...</p>}
+      {maPosition > 0 && (
+        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 16px" }}>
+          Tu es <b style={{ color: COLORS.gold }}>{maPosition}<sup>{maPosition === 1 ? "er" : "e"}</sup></b> sur {players.length} joueur{players.length > 1 ? "s" : ""}.
+        </p>
+      )}
+
+      {loading && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement…</p>}
       {error && <p style={{ color: COLORS.danger, fontSize: 13 }}>{error}</p>}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {players.map((p, i) => {
-          const t = tierInfo(p.rank_tier);
-          return (
-            <div
-              key={p.pseudo}
-              onClick={() => onViewProfile(p.pseudo)}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: COLORS.card, borderRadius: 12, padding: "10px 14px", cursor: "pointer" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 20, textAlign: "center", fontWeight: 700, color: COLORS.muted, fontSize: 13 }}>{i + 1}</span>
-                <span style={{ fontWeight: 700, fontSize: 14 }}>{p.pseudo}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 12, color: COLORS.muted }}>{p.rank_points} pts</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: t.rank.color }}>{t.rank.name} {t.palierLabel}</span>
-              </div>
-            </div>
-          );
-        })}
+      <div>
+        {players.map((p, i) => (
+          <PlayerRow
+            key={p.pseudo}
+            player={p}
+            position={i + 1}
+            isMe={user && p.pseudo === user.pseudo}
+            onClick={() => onNavigate("public-profile", p.pseudo)}
+          />
+        ))}
         {!loading && players.length === 0 && (
-          <p style={{ color: COLORS.muted, fontSize: 14 }}>Personne n'a encore joué en classé.</p>
+          <p style={{ color: COLORS.muted, fontSize: 13, textAlign: "center", padding: "20px 0" }}>
+            Personne n'a encore joué en classé.
+          </p>
         )}
       </div>
     </div>

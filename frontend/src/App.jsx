@@ -6,6 +6,7 @@ import Login from "./Login";
 import Chill from "./modes/chill/Chill";
 import Ranked from "./modes/ranked/Ranked";
 import Ranks from "./modes/ranked/Ranks";
+import Leaderboard from "./modes/ranked/Leaderboard";
 import LocalChoice from "./modes/local/LocalChoice";
 import Mise from "./modes/local/games/Mise";
 import QuestionsMode from "./modes/local/games/QuestionsMode";
@@ -44,7 +45,8 @@ function Router() {
 
   if (screen.startsWith("chill-")) return <Chill screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("ranked-")) return <Ranked screen={screen} onNavigate={navigate} />;
-  if (screen === "ranks" || screen === "leaderboard") return <Ranks onNavigate={navigateWithArg} />;
+  if (screen === "ranks") return <Ranks onNavigate={navigateWithArg} />;
+  if (screen === "leaderboard") return <Leaderboard onNavigate={navigateWithArg} />;
 
   if (screen === "local-choice") return <LocalChoice screen={screen} onNavigate={navigate} />;
   if (screen === "daily") return <Daily screen={screen} onNavigate={navigate} />;

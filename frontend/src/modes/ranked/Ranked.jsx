@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { SkipForward, Check, X } from "lucide-react";
+import { SkipForward, Check, X, Trophy } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, tint, rankGradient, RANKS } from "../../design/theme";
 import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
@@ -221,6 +221,16 @@ export default function Ranked({ screen, onNavigate }) {
         <Button onClick={start} disabled={loading}>
           {loading ? "Chargement..." : "Lancer une partie classée"}
         </Button>
+        <button
+          onClick={() => onNavigate("leaderboard")}
+          style={{
+            width: "100%", marginTop: 10, background: COLORS.soft, border: "none", borderRadius: 16,
+            padding: 15, fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, color: COLORS.text,
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}
+        >
+          <Trophy size={16} /> Voir le classement
+        </button>
       </div>
     );
   }
