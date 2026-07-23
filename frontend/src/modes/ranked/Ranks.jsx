@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tint, tierInfo, rankGradient } from "../../design/theme";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
@@ -11,14 +12,17 @@ import { useAuth } from "../../auth/AuthContext";
  * l'écran du mode Classé et dans le profil. Ce que l'on vient chercher ici,
  * c'est « qui est devant moi ».
  */
-function Ligne({ tier, pseudo, points, moi, separateur = true }) {
+function Ligne({ tier, pseudo, points, moi, separateur = true, onClick }) {
   const t = tierInfo(tier);
   return (
-    <div style={{
+    <div
+      onClick={onClick}
+      style={{
       display: "flex", alignItems: "center", gap: 13, padding: "11px 12px", borderRadius: 14,
       background: moi ? tint(COLORS.gold, 8) : "transparent",
       border: `1px solid ${moi ? COLORS.gold : "transparent"}`,
       borderBottom: separateur && !moi ? `1px solid ${COLORS.cardAlt}` : undefined,
+      cursor: onClick ? "pointer" : "default",
     }}>
       {/* Le rang tient lieu de position : il dit davantage qu'un numéro. */}
       <span style={{
@@ -42,6 +46,7 @@ function Ligne({ tier, pseudo, points, moi, separateur = true }) {
       <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15.5, color: COLORS.text, flexShrink: 0 }}>
         {points.toLocaleString("fr-FR")}
       </span>
+      {onClick && <ChevronRight size={16} color={COLORS.chevron} style={{ flexShrink: 0, marginLeft: -4 }} />}
     </div>
   );
 }
@@ -80,6 +85,7 @@ export default function Ranks({ onNavigate }) {
           points={p.rank_points}
           moi={user && p.pseudo === user.pseudo}
           separateur={i < top.length - 1}
+          onClick={() => onNavigate("public-profile", p.pseudo)}
         />
       ))}
 
@@ -87,7 +93,8 @@ export default function Ranks({ onNavigate }) {
       {moi && !moi.dans_le_haut && (
         <>
           <p style={{ textAlign: "center", color: COLORS.chevron, fontSize: 18, margin: "6px 0", letterSpacing: 3 }}>···</p>
-          <Ligne tier={moi.rank_tier} pseudo={moi.pseudo} points={moi.rank_points} moi separateur={false} />
+          <Ligne tier={moi.rank_tier} pseudo={moi.pseudo} points={moi.rank_points} moi separateur={false}
+                 onClick={() => onNavigate("public-profile", moi.pseudo)} />
         </>
       )}
 

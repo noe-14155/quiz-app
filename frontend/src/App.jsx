@@ -58,9 +58,20 @@ function Router() {
   // fiable d'éviter qu'elle ne saute sur iPhone quand la barre d'adresse de
   // Safari se rétracte.
   return (
-    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{
+      // 100vh d'abord : sur les navigateurs qui ignorent dvh, la règle suivante
+      // est simplement écartée et la hauteur reste correcte. Sans ce repli, le
+      // conteneur n'aurait aucune hauteur et le contenu serait inaccessible.
+      height: "100vh", maxHeight: "100dvh", minHeight: "100dvh",
+      display: "flex", flexDirection: "column", overflow: "hidden",
+    }}>
       <NetworkGuard />
-      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
+      <div style={{
+        flex: 1, minHeight: 0,
+        overflowY: "auto", overflowX: "hidden",
+        WebkitOverflowScrolling: "touch",   // inertie de défilement sur iOS
+        overscrollBehaviorY: "contain",     // le corps ne défile pas derrière
+      }}>
         {ecran()}
       </div>
       {surOnglet && <BottomNav actif={screen} onNavigate={navigate} />}
