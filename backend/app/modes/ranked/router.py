@@ -158,6 +158,10 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         result = "bonne" if correct else "mauvaise"
 
     new_rank_points = rank_config.apply_delta(user["rank_points"], delta)
+    # Le score ne descend jamais sous zéro : la perte réelle peut donc être plus
+    # faible que le malus théorique. C'est cette variation-là qu'on renvoie,
+    # sinon le bilan de fin de partie ne correspondrait pas au score affiché.
+    delta = new_rank_points - user["rank_points"]
     new_tier = rank_config.tier_from_points(new_rank_points, cfg)
     now = datetime.now(timezone.utc).isoformat()
 
@@ -232,7 +236,7 @@ def get_ladder(user=Depends(get_current_user)):
 
 
 @router.get("/leaderboard")
-def leaderboard(limit: int = 5, user=Depends(get_current_user_optional)):
+def leaderboard(limit: int = 10, user=Depends(get_current_user_optional)):
     """Le tri se fait directement sur le cumul de points — un seul critère,
     sans ambiguïté de palier entre deux joueurs proches."""
     cfg = get_settings()
@@ -261,6 +265,7 @@ def leaderboard(limit: int = 5, user=Depends(get_current_user_optional)):
         moi = {
             "pseudo": user["pseudo"],
             "rank_points": user["rank_points"],
+            "rank_tier": rank_config.tier_from_points(user["rank_points"], cfg),
             "position": devant + 1,
             "total": total,
             "dans_le_haut": (devant + 1) <= limit,

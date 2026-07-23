@@ -212,47 +212,22 @@ export default function Ranked({ screen, onNavigate }) {
           </p>
 
           {rules?.bareme && (
-            <>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 12, padding: "13px 14px",
-                borderRadius: 14, background: tint(COLORS.gold, 8), marginBottom: 12,
+            <div style={{
+              display: "flex", alignItems: "center", gap: 16, padding: "16px 18px",
+              borderRadius: 16, background: tint(COLORS.gold, 8),
+            }}>
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 38, color: COLORS.gold,
+                lineHeight: 0.9, flexShrink: 0,
               }}>
-                <span style={{
-                  fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 26, color: COLORS.gold, lineHeight: 1,
-                }}>
-                  {rules.bareme.sur_dix}<span style={{ fontSize: 15 }}>/10</span>
-                </span>
-                <span style={{ fontSize: 12.5, color: COLORS.muted2, lineHeight: 1.4 }}>
-                  C'est ce qu'on attend de ton rang.<br />
-                  À ce score exactement, tu te maintiens.
-                </span>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <div style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, background: tint(COLORS.success, 8) }}>
-                  <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, color: COLORS.muted, letterSpacing: 0.5 }}>
-                    BONNE RÉPONSE
-                  </span>
-                  <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 17, color: COLORS.success }}>
-                    +{rules.bareme.gain}
-                  </span>
-                </div>
-                <div style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, background: tint(COLORS.danger, 8) }}>
-                  <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, color: COLORS.muted, letterSpacing: 0.5 }}>
-                    ERREUR
-                  </span>
-                  <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 17, color: COLORS.danger }}>
-                    −{rules.bareme.perte}
-                  </span>
-                </div>
-              </div>
-
-              <p style={{ fontSize: 12.5, color: COLORS.muted, margin: 0, lineHeight: 1.5 }}>
-                Plus tu montes, plus le niveau attendu est haut : une bonne réponse rapporte moins
-                et une erreur coûte davantage.
-                {rules?.can_pass === false ? " Passer n'est plus autorisé à ton rang." : ""}
-              </p>
-            </>
+                {rules.bareme.sur_dix}
+                <span style={{ fontSize: 18 }}>/10</span>
+              </span>
+              <span style={{ fontFamily: FONT_BODY, fontWeight: 800, fontSize: 13, color: COLORS.muted2, lineHeight: 1.45 }}>
+                Le niveau attendu à ton rang.<br />
+                Au-dessus tu montes, en dessous tu chutes.
+              </span>
+            </div>
           )}
         </div>
 
@@ -305,7 +280,7 @@ export default function Ranked({ screen, onNavigate }) {
           <>
             <Explanation
               ok={reveal.delta_points >= 0}
-              title={`${reveal.correct ? "Bonne réponse" : (answered === -1 ? "Passée" : "Raté")} · ${reveal.delta_points >= 0 ? "+" : ""}${reveal.delta_points} pts`}
+              title={reveal.correct ? "Bonne réponse" : (answered === -1 ? "Passée" : "Raté")}
               correctAnswer={reveal.correct ? null : q.choix[reveal.bonne_reponse - 1]}
               text={reveal.explication}
             >
