@@ -252,7 +252,7 @@ def init_schema():
         conn.commit()
 
     # Migration : date du dernier calcul de la perte quotidienne du mode classé
-    # (à partir de Génie III). NULL = jamais calculée encore.
+    # (à partir de Champion III). NULL = jamais calculée encore.
     if "last_decay_date" not in existing_columns:
         conn.execute("ALTER TABLE users ADD COLUMN last_decay_date TEXT")
         conn.commit()

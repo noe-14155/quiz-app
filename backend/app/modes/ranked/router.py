@@ -131,11 +131,11 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
     cfg = settings
     tier = rank_config.tier_from_points(user["rank_points"], cfg)
     if payload.choice is None:
-        # Passer est interdit à partir de Génie : on refuse la requête plutôt
+        # Passer est interdit à partir de Champion : on refuse la requête plutôt
         # que de l'accepter silencieusement (le frontend masque déjà le bouton).
         if not rank_config.can_pass(user["rank_points"], cfg):
             conn.close()
-            raise HTTPException(status_code=403, detail="Passer une question n'est plus autorisé à partir de Génie")
+            raise HTTPException(status_code=403, detail="Passer une question n'est plus autorisé à partir de Champion")
         delta, result, correct = -rank_config.loss_for_pass(tier, cfg), "passee", False
     else:
         correct = payload.choice == question["bonne_reponse"] - 1

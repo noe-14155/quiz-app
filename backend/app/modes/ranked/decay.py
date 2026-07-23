@@ -1,8 +1,8 @@
-"""Perte quotidienne du mode classé (à partir de Génie III).
+"""Perte quotidienne du mode classé (à partir de Champion III).
 
 Appelée à la lecture du profil : calcule les jours écoulés depuis le dernier
 calcul et retire N points par jour (réglable), avec plancher au début de
-Génie III. Modèle "rattrapage" : pas de tâche planifiée.
+Champion III. Modèle "rattrapage" : pas de tâche planifiée.
 """
 from datetime import date
 
@@ -18,8 +18,8 @@ def apply_daily_decay(user_id: int, rank_points: int, last_decay_date: str):
     today = date.today().isoformat()
     floor = rank_config.diamant_floor_points(cfg)
 
-    # En dessous de Génie III : rien à faire, mais on garde la date à jour pour
-    # ne pas accumuler un retard qui frapperait d'un coup en arrivant à Génie.
+    # En dessous de Champion III : rien à faire, mais on garde la date à jour pour
+    # ne pas accumuler un retard qui frapperait d'un coup en arrivant à Champion.
     if rank_points < floor:
         if last_decay_date != today:
             conn = get_connection()

@@ -29,7 +29,7 @@ def _build_profile(user: dict):
 
 @router.get("/me")
 def my_profile(user=Depends(get_current_user)):
-    # Applique la perte quotidienne du mode classé (à partir de Génie III)
+    # Applique la perte quotidienne du mode classé (à partir de Champion III)
     # avant d'afficher le profil. Modèle rattrapage : pas de tâche planifiée.
     updated_points = apply_daily_decay(user["id"], user["rank_points"], user["last_decay_date"] if "last_decay_date" in user.keys() else None)
     user = dict(user)

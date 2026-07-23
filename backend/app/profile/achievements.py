@@ -23,10 +23,11 @@ CATALOGUE = [
     ("serie_3",          "Trois jours de suite","Défi du jour 3 jours d'affilée",              "Assiduité"),
     ("serie_7",          "Une semaine pleine",  "Défi du jour 7 jours d'affilée",              "Assiduité"),
     ("serie_30",         "Un mois sans faillir","Défi du jour 30 jours d'affilée",             "Assiduité"),
-    ("rang_malin",       "Malin",               "Atteindre le rang Malin",                     "Progression"),
-    ("rang_grosse_tete", "Grosse Tête",         "Atteindre le rang Grosse Tête",               "Progression"),
-    ("rang_genie",       "Génie",               "Atteindre le rang Génie",                     "Progression"),
-    ("rang_prodige",     "Prodige",             "Atteindre le rang Prodige",                   "Progression"),
+    ("rang_malin",       "Qualifié",            "Atteindre le rang Qualifié",                  "Progression"),
+    ("rang_grosse_tete", "Finaliste",           "Atteindre le rang Finaliste",                 "Progression"),
+    ("rang_genie",       "Champion",            "Atteindre le rang Champion",                  "Progression"),
+    ("rang_prodige",     "Maître de Midi",      "Atteindre le rang Maître de Midi",            "Progression"),
+    ("rang_hall",        "Hall of Fame",        "Entrer au Hall of Fame",                      "Progression"),
     ("xp_1000",          "Mille",               "Cumuler 1 000 XP",                            "Progression"),
     ("xp_5000",          "Cinq mille",          "Cumuler 5 000 XP",                            "Progression"),
 ]
@@ -91,6 +92,7 @@ def evaluer(user_id: int, pseudo: str = None, contexte: dict = None):
             "rang_grosse_tete":  rang_index >= 3,
             "rang_genie":        rang_index >= 4,
             "rang_prodige":      rang_index >= 5,
+            "rang_hall":         rang_index >= 6,
             "xp_1000":           u["xp_total"] >= 1000,
             "xp_5000":           u["xp_total"] >= 5000,
         }

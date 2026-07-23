@@ -8,10 +8,8 @@ from app.profile.activity import EVENTS as EVENT_LABELS
 DEFAULT_SETTINGS = {
     # Barème du mode classé : bornes de la courbe (le code interpole entre le
     # bas et le haut du classement). Voir rank_config.py.
-    "ranked_k_low": "24",          # amplitude des variations en bas de classement
-    "ranked_k_high": "8",          # amplitude au sommet (le score bouge moins)
-    "ranked_loss_pass": "3",       # coût d'un « passer » (uniquement sous Génie, où c'est permis)
-    "ranked_daily_decay": "50",    # perte quotidienne à partir de Génie III
+    "ranked_amplitude": "60",      # échelle générale des variations de points
+    "ranked_daily_decay": "50",    # perte quotidienne à partir de Champion III
     "ranked_time_per_question": "15",
     "mode_chill_enabled": "1",
     "mode_ranked_enabled": "1",
