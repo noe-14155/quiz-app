@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { LogOut, Sparkles, ChevronRight, ChevronLeft, Sun, Moon } from "lucide-react";
+import { useState } from "react";
+import { LogOut, Sparkles, ChevronRight, Sun, Moon } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, gradient, rankGradient, sectionLabel, tint, ACCENT_OPTIONS } from "../design/theme";
 import { useThemeSettings } from "../design/ThemeContext";
+import { iconeDuRang } from "../design/rankIcons";
 import { FEEDBACK, setFeedback } from "../design/feedback";
 import Button from "../components/Button";
-import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 function xpForLevel(n) {
@@ -17,6 +17,7 @@ function ProfileBody({ profile }) {
   const xpNext = xpForLevel(level + 1);
   const progress = ((profile.xp_total - xpCurrent) / (xpNext - xpCurrent)) * 100;
   const t = tierInfo(profile.rank_tier);
+  const IconeRang = iconeDuRang(t.rankIndex);
 
   return (
     <>
@@ -39,8 +40,9 @@ function ProfileBody({ profile }) {
         <div style={{
           width: 48, height: 48, borderRadius: 15, background: rankGradient(t.rank), flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 16, color: "#fff",
-        }}>{t.palierLabel}</div>
+        }}>
+          <IconeRang size={22} color="#fff" />
+        </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <p style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 800, margin: 0 }}>{t.rank.name} {t.palierLabel}</p>
@@ -231,87 +233,6 @@ export function Profile({ screen, onNavigate }) {
       <p style={{ textAlign: "center", fontSize: 11, color: COLORS.chevron, margin: "16px 0 0" }}>
         SquizzYourBrain · v1.0
       </p>
-    </div>
-  );
-}
-
-export function PublicProfile({ screen, onNavigate, pseudo }) {
-  const [profile, setProfile] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    apiFetch(`/api/profile/${encodeURIComponent(pseudo)}`).then(setProfile).catch((e) => setError(e.message));
-  }, [pseudo]);
-
-  // Thèmes du plus au moins réussi : c'est ce qu'on vient chercher sur le
-  // profil d'un autre joueur — sur quoi il est fort, sur quoi il flanche.
-  const themes = profile
-    ? Object.entries(profile.stats_by_theme || {})
-        .map(([nom, st]) => ({ nom, ...st }))
-        .sort((a, b) => b.pct - a.pct)
-    : [];
-
-  return (
-    <div style={cardWrap}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0 18px" }}>
-        <button
-          onClick={() => onNavigate("ranks")}
-          aria-label="Retour"
-          style={{
-            width: 36, height: 36, borderRadius: 11, background: COLORS.soft, border: "none",
-            color: COLORS.muted2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, color: COLORS.text }}>
-          {pseudo}
-        </h2>
-      </div>
-
-      {error && <p style={{ color: COLORS.danger, fontSize: 13 }}>{error}</p>}
-      {!profile && !error && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement…</p>}
-
-      {profile && (
-        <>
-          <ProfileBody profile={profile} />
-
-          <p style={sectionLabel}>
-            Ses thèmes
-            {themes.length > 0 && (
-              <span style={{ color: COLORS.chevron, fontWeight: 700 }}> {themes.length}</span>
-            )}
-          </p>
-          {themes.length === 0 ? (
-            <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.5 }}>
-              Pas encore assez de parties classées pour dégager des tendances.
-            </p>
-          ) : (
-            themes.map((t, i) => (
-              <div key={t.nom} style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 9 }}>
-                <span style={{
-                  fontFamily: FONT_BODY, fontWeight: 800, fontSize: 12.5, width: 110, flexShrink: 0,
-                  color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {t.nom}
-                </span>
-                <span style={{ flex: 1, height: 8, background: COLORS.cardAlt, borderRadius: 4, overflow: "hidden" }}>
-                  <span style={{
-                    display: "block", height: "100%", width: `${t.pct}%`,
-                    background: i === 0 ? COLORS.success : i === themes.length - 1 ? COLORS.danger : COLORS.gold,
-                  }} />
-                </span>
-                <span style={{
-                  fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 12.5, color: COLORS.muted,
-                  width: 62, textAlign: "right", flexShrink: 0,
-                }}>
-                  {t.pct}% · {t.attempted}
-                </span>
-              </div>
-            ))
-          )}
-        </>
-      )}
     </div>
   );
 }

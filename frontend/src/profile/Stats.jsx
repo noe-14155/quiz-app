@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, TrendingUp, TrendingDown } from "lucide-react";
 import {
-  cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, sectionLabel, tint, gradient,
+  cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, sectionLabel,
 } from "../design/theme";
 import LineChart from "../components/LineChart";
 import { apiFetch } from "../api/client";
