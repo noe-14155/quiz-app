@@ -10,6 +10,7 @@ from app.auth.router import get_current_user, get_current_user_optional
 from app.core.db import get_connection
 from app.questions import service as questions_service
 from app.modes.ranked import rank_config
+from app.modes.ranked import season
 from app.profile.xp import xp_for_difficulty, award_xp
 from app.profile.activity import log_event
 from app.profile import achievements
@@ -74,6 +75,9 @@ def get_rules(user=Depends(get_current_user)):
 
 @router.post("/start")
 def start_party(user=Depends(get_current_user)):
+    # Si le mois a changé depuis la dernière partie, la saison bascule ici : le
+    # serveur peut tourner des semaines sans redémarrer.
+    season.verifier_et_reinitialiser()
     if not is_mode_enabled("mode_ranked_enabled"):
         raise HTTPException(status_code=403, detail="Le mode classé est temporairement désactivé")
     settings = get_settings()
@@ -165,7 +169,11 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
     new_tier = rank_config.tier_from_points(new_rank_points, cfg)
     now = datetime.now(timezone.utc).isoformat()
 
-    conn.execute("UPDATE users SET rank_tier = ?, rank_points = ? WHERE id = ?", (new_tier, new_rank_points, user["id"]))
+    # Sommet de la saison : sert au palmarès une fois le mois terminé.
+    conn.execute(
+        "UPDATE users SET rank_tier = ?, rank_points = ?, peak_points = MAX(peak_points, ?) WHERE id = ?",
+        (new_tier, new_rank_points, new_rank_points, user["id"]),
+    )
     conn.execute(
         "INSERT INTO question_results (user_id, question_id, result, updated_at) VALUES (?,?,?,?) "
         "ON CONFLICT(user_id, question_id) DO UPDATE SET result = excluded.result, updated_at = excluded.updated_at",
@@ -270,4 +278,4 @@ def leaderboard(limit: int = 10, user=Depends(get_current_user_optional)):
             "total": total,
             "dans_le_haut": (devant + 1) <= limit,
         }
-    return {"leaderboard": result, "moi": moi}
+    return {"leaderboard": result, "moi": moi, "saison": season.info()}

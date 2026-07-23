@@ -48,6 +48,38 @@ def my_profile(user=Depends(get_current_user)):
     }
 
 
+@router.get("/{pseudo}/public")
+def public_profile(pseudo: str):
+    """Profil complet d'un joueur, consultable depuis le classement :
+    progression, palmarès des saisons passées et succès obtenus."""
+    conn = get_connection()
+    u = conn.execute(
+        "SELECT id, pseudo, xp_total, rank_tier, rank_points, peak_points, best_tier_ever, created_at "
+        "FROM users WHERE pseudo = ?",
+        (pseudo,),
+    ).fetchone()
+    conn.close()
+    if not u:
+        raise HTTPException(status_code=404, detail="Joueur introuvable")
+
+    from app.modes.ranked import season, rank_config
+    tous = achievements.lister(u["id"])
+    # Meilleur rang jamais atteint : on croise l'archive des saisons passées
+    # avec le sommet de la saison EN COURS, sinon un joueur qui a culminé ce
+    # mois-ci puis redescendu paraîtrait n'avoir jamais brillé.
+    sommet_saison = rank_config.tier_from_points(max(u["peak_points"] or 0, u["rank_points"] or 0))
+    return {
+        **_build_profile(u),
+        # Le meilleur rang jamais atteint : au minimum le rang actuel, sinon un
+        # joueur qui vient de basculer de saison semblerait n'avoir rien fait.
+        "best_tier_ever": max(u["best_tier_ever"] or 0, sommet_saison),
+        "palmares": season.palmares(u["id"]),
+        "achievements": [a for a in tous if a["unlocked"]],
+        "nb_achievements": len(tous),
+        "membre_depuis": u["created_at"],
+    }
+
+
 @router.get("/me/stats")
 def my_stats(user=Depends(get_current_user)):
     """Statistiques détaillées : progression, régularité, thèmes forts/faibles."""

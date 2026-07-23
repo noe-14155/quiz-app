@@ -16,7 +16,8 @@ import Jouer from "./modes/jouer/Jouer";
 import Arcade from "./modes/arcade/Arcade";
 import Duel from "./modes/duel/Duel";
 import Enigme from "./modes/enigme/Enigme";
-import { Profile, PublicProfile } from "./profile/Profile";
+import { Profile } from "./profile/Profile";
+import PublicProfile from "./profile/PublicProfile";
 import Stats from "./profile/Stats";
 import Achievements from "./profile/Achievements";
 import Admin from "./admin/Admin";
@@ -105,7 +106,7 @@ function Router() {
   if (screen === "profile") return <Profile screen={screen} onNavigate={navigate} />;
   if (screen === "stats") return <Stats onNavigate={navigate} />;
   if (screen === "succes") return <Achievements onNavigate={navigate} />;
-  if (screen === "public-profile") return <PublicProfile screen={screen} onNavigate={navigate} pseudo={viewedPseudo} />;
+  if (screen === "public-profile") return <PublicProfile onNavigate={navigate} pseudo={viewedPseudo} />;
   if (screen === "admin") return <Admin screen={screen} onNavigate={navigate} />;
 
   return <Home screen="home" onNavigate={navigate} />;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Crown, ChevronRight } from "lucide-react";
+import { Crown, ChevronRight, CalendarClock } from "lucide-react";
 import { iconeDuRang } from "../../design/rankIcons";
 import {
   cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tint, tierInfo, rankGradient, gradientText,
@@ -8,6 +8,15 @@ import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 
 const MEDAILLES = ["#FFC94D", "#C3CBD3", "#D9A066"];
+
+/** Temps restant avant la remise à zéro, formulé simplement. */
+function resteLisible(saison) {
+  const { jours_restants: j, heures_restantes: h } = saison;
+  if (j === 0 && h === 0) return "Nouvelle saison imminente";
+  if (j === 0) return `Fin de saison dans ${h} heure${h > 1 ? "s" : ""}`;
+  if (j === 1) return "Dernier jour de la saison";
+  return `Fin de saison dans ${j} jours`;
+}
 
 /**
  * Écran « Classement », pensé comme un plateau de jeu télévisé : les trois
@@ -166,6 +175,30 @@ export default function Ranks({ onNavigate }) {
           ? <>Tu es <b style={{ color: COLORS.gold }}>{moi.position}<sup>{moi.position === 1 ? "er" : "e"}</sup></b> sur {moi.total} joueur{moi.total > 1 ? "s" : ""}.</>
           : "Les dix meilleurs joueurs."}
       </p>
+
+      {/* Compte à rebours : le classement repart de zéro le 1er du mois. */}
+      {data?.saison && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 16,
+          background: tint(COLORS.accent2, 8), border: `1px solid ${tint(COLORS.accent2, 25)}`,
+          marginBottom: 20,
+        }}>
+          <span style={{
+            width: 34, height: 34, borderRadius: 11, flexShrink: 0, background: tint(COLORS.accent2, 16),
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <CalendarClock size={17} color={COLORS.accent2} />
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.text }}>
+              {resteLisible(data.saison)}
+            </span>
+            <span style={{ display: "block", fontFamily: FONT_BODY, fontSize: 11.5, color: COLORS.muted, marginTop: 1 }}>
+              Le classement repart de zéro le 1<sup>er</sup> du mois. Ton palmarès, lui, est conservé.
+            </span>
+          </span>
+        </div>
+      )}
 
       {erreur && <p style={{ color: COLORS.danger, fontSize: 13 }}>{erreur}</p>}
       {!data && !erreur && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement…</p>}

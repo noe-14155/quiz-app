@@ -92,6 +92,16 @@ def init_schema():
             PRIMARY KEY (date, pseudo)
         );
 
+        CREATE TABLE IF NOT EXISTS season_history (
+            user_id INTEGER NOT NULL,
+            season TEXT NOT NULL,
+            best_points INTEGER NOT NULL,
+            best_tier INTEGER NOT NULL,
+            final_points INTEGER NOT NULL,
+            archived_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, season)
+        );
+
         CREATE TABLE IF NOT EXISTS rank_history (
             user_id INTEGER NOT NULL,
             date TEXT NOT NULL,
@@ -255,6 +265,26 @@ def init_schema():
     # (à partir de Champion III). NULL = jamais calculée encore.
     if "last_decay_date" not in existing_columns:
         conn.execute("ALTER TABLE users ADD COLUMN last_decay_date TEXT")
+        conn.commit()
+
+    # Migration : sommet atteint pendant la saison en cours, et meilleur rang
+    # jamais atteint toutes saisons confondues (pour le palmarès du profil).
+    if "peak_points" not in existing_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN peak_points INTEGER NOT NULL DEFAULT 0")
+        conn.execute("UPDATE users SET peak_points = rank_points")
+        conn.commit()
+    if "best_tier_ever" not in existing_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN best_tier_ever INTEGER NOT NULL DEFAULT 0")
+        # On RECALCULE depuis les points, sans recopier l'ancienne colonne
+        # rank_tier : celle-ci a été calculée avec un système de rangs antérieur
+        # et ne veut plus rien dire. Un joueur à 120 points se serait retrouvé
+        # avec un « sommet » de Champion qu'il n'a jamais atteint.
+        from app.modes.ranked import rank_config
+        for row in conn.execute("SELECT id, rank_points FROM users").fetchall():
+            conn.execute(
+                "UPDATE users SET best_tier_ever = ? WHERE id = ?",
+                (rank_config.tier_from_points(row["rank_points"] or 0), row["id"]),
+            )
         conn.commit()
 
     # Migration : réponses données au défi du jour, pour pouvoir les revoir

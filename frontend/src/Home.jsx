@@ -4,6 +4,7 @@ import {
   COLORS, FONT_DISPLAY, FONT_BODY, cardWrap, gradientFull, gradientTri,
   gradientText, tint, tierInfo, rankGradient,
 } from "./design/theme";
+import { iconeDuRang } from "./design/rankIcons";
 import { useAuth } from "./auth/AuthContext";
 import { apiFetch } from "./api/client";
 
@@ -59,6 +60,7 @@ export default function Home({ onNavigate }) {
   }, [user]);
 
   const t = user ? tierInfo(user.rank_tier) : null;
+  const IconeRang = t ? iconeDuRang(t.rankIndex) : null;
   const serie = defi?.streak?.current || 0;
   const defiFait = !!defi?.already_played;
 
@@ -91,9 +93,8 @@ export default function Home({ onNavigate }) {
           <span style={{
             width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: rankGradient(t.rank),
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, color: "#fff",
           }}>
-            {t.palierLabel}
+            <IconeRang size={21} color="#fff" />
           </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

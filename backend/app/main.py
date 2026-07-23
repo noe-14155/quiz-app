@@ -61,6 +61,9 @@ def on_startup():
     init_schema()  # tables persistantes (comptes, parties...) : créées si absentes, jamais supprimées
     import_questions_from_csv()  # table `questions` : recréée en entier depuis le CSV à chaque démarrage
     create_indexes()  # APRÈS l'import : recréer la table `questions` détruit ses index
+    # Bascule de saison si le mois a changé pendant l'arrêt du serveur.
+    from app.modes.ranked.season import verifier_et_reinitialiser
+    verifier_et_reinitialiser()
 
 
 @app.get("/api/health")
