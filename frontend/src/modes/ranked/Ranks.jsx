@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Crown, ChevronRight } from "lucide-react";
+import { iconeDuRang } from "../../design/rankIcons";
 import {
   cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tint, tierInfo, rankGradient, gradientText,
 } from "../../design/theme";
@@ -20,6 +21,7 @@ const MEDAILLES = ["#FFC94D", "#C3CBD3", "#D9A066"];
 function Marche({ joueur, position, moi, onClick }) {
   if (!joueur) return <div style={{ flex: 1 }} />;
   const t = tierInfo(joueur.rank_tier);
+  const IconeRang = iconeDuRang(t.rankIndex);
   const premier = position === 1;
   const hauteur = premier ? 92 : position === 2 ? 68 : 54;
   const medaille = MEDAILLES[position - 1];
@@ -43,10 +45,9 @@ function Marche({ joueur, position, moi, onClick }) {
         background: rankGradient(t.rank),
         boxShadow: `0 0 0 3px ${COLORS.bg}, 0 0 0 5px ${medaille}`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: premier ? 16 : 13.5, color: "#fff",
         marginBottom: 8, animation: `sqpop .5s ${position * 0.08}s both`,
       }}>
-        {t.palierLabel}
+        <IconeRang size={premier ? 24 : 20} color="#fff" />
       </span>
 
       <span style={{
@@ -57,7 +58,13 @@ function Marche({ joueur, position, moi, onClick }) {
         {joueur.pseudo}
       </span>
       <span style={{
-        fontFamily: FONT_BODY, fontWeight: 800, fontSize: 11.5, color: COLORS.muted, marginBottom: 8,
+        fontFamily: FONT_BODY, fontWeight: 700, fontSize: 10.5, color: COLORS.muted,
+        maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {t.rank.name}
+      </span>
+      <span style={{
+        fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 12.5, color: COLORS.gold, marginBottom: 8,
       }}>
         {joueur.rank_points.toLocaleString("fr-FR")}
       </span>
@@ -91,6 +98,7 @@ function Marche({ joueur, position, moi, onClick }) {
 /** Ligne du tableau, de la 4e place à la 10e. */
 function Ligne({ joueur, position, moi, onClick, dernier }) {
   const t = tierInfo(joueur.rank_tier);
+  const IconeRang = iconeDuRang(t.rankIndex);
   return (
     <div
       onClick={onClick}
@@ -111,9 +119,8 @@ function Ligne({ joueur, position, moi, onClick, dernier }) {
       <span style={{
         width: 32, height: 32, borderRadius: 10, flexShrink: 0, background: rankGradient(t.rank),
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 12, color: "#fff",
       }}>
-        {t.palierLabel}
+        <IconeRang size={16} color="#fff" />
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{

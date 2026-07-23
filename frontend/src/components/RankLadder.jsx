@@ -1,8 +1,6 @@
-import { Lock, Check, Crown, Trophy, Medal, Star, Ticket, UserCheck, Users } from "lucide-react";
+import { Lock, Check } from "lucide-react";
 import { COLORS, FONT_DISPLAY, FONT_BODY, rankGradient, rankRange, tint } from "../design/theme";
-
-/* Une icône par rang, dans l'ordre Figurant → Hall of Fame. */
-const ICONS = [Users, Ticket, UserCheck, Medal, Trophy, Crown, Star];
+import { iconeDuRang } from "../design/rankIcons";
 
 /**
  * « L'échelle » : les rangs du plus haut au plus bas, reliés par un trait
@@ -23,7 +21,7 @@ export default function RankLadder({ ladder, ranks }) {
 
       {rows.map((row) => {
         const meta = ranks.find((r) => r.name === row.rank) || ranks[0];
-        const Icon = ICONS[ranks.indexOf(meta)] || Users;
+        const Icon = iconeDuRang(ranks.indexOf(meta));
         const isCurrent = row.state === "current";
         const isLocked = row.state === "locked";
 

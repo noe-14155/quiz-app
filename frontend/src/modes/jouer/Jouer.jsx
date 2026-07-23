@@ -138,18 +138,6 @@ export default function Jouer({ onNavigate }) {
         onClick={() => onNavigate("chill-setup")}
       />
 
-      <p style={sectionLabel}>À plusieurs</p>
-      <Mode
-        Icone={Swords} couleur="#3B82F6" titre="Duel" accroche="Défie un ami, chacun joue quand il veut"
-        actif={modes.mode_duel_enabled}
-        onClick={() => onNavigate(user ? "duel" : "login")}
-      />
-      <Mode
-        Icone={Users} couleur={COLORS.shapeB} titre="Local" accroche="Entre potes, sur un seul écran"
-        actif={modes.mode_local_enabled} dernier
-        onClick={() => onNavigate("local-choice")}
-      />
-
       {modes.mode_arcade_enabled !== false && (
         <>
           <p style={sectionLabel}>En deux minutes</p>
@@ -164,6 +152,18 @@ export default function Jouer({ onNavigate }) {
           />
         </>
       )}
+      <p style={sectionLabel}>À plusieurs</p>
+      <Mode
+        Icone={Swords} couleur="#3B82F6" titre="Duel" accroche="Défie un ami, chacun joue quand il veut"
+        actif={modes.mode_duel_enabled}
+        onClick={() => onNavigate(user ? "duel" : "login")}
+      />
+      <Mode
+        Icone={Users} couleur={COLORS.shapeB} titre="Local" accroche="Entre potes, sur un seul écran"
+        actif={modes.mode_local_enabled} dernier
+        onClick={() => onNavigate("local-choice")}
+      />
+
     </div>
   );
 }
