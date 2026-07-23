@@ -113,15 +113,15 @@ export default function Arcade({ screen, onNavigate }) {
   }
 
 
-  /** Classement du jour : remis à zéro chaque nuit, donc à la portée de tous. */
+  /** Meilleurs scores de tous les temps sur ce mode. */
   function TopDuJour() {
-    const jour = records?.[mode]?.top_jour || [];
+    const jour = records?.[mode]?.top || [];
     return (
       <>
-        <p style={sectionLabel}>Meilleurs scores du jour</p>
+        <p style={sectionLabel}>Meilleurs scores</p>
         {jour.length === 0 ? (
           <p style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.5 }}>
-            Personne n'a encore joué aujourd'hui. Le premier score prend la tête.
+            Aucun score enregistré. Le premier prend la tête.
           </p>
         ) : (
           jour.map((t, i) => {

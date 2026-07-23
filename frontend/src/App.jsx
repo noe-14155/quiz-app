@@ -12,7 +12,7 @@ import LocalChoice from "./modes/local/LocalChoice";
 import Mise from "./modes/local/games/Mise";
 import QuestionsMode from "./modes/local/games/QuestionsMode";
 import Daily from "./modes/daily/Daily";
-import DuJour from "./modes/daily/DuJour";
+import Jouer from "./modes/jouer/Jouer";
 import Arcade from "./modes/arcade/Arcade";
 import Duel from "./modes/duel/Duel";
 import Enigme from "./modes/enigme/Enigme";
@@ -80,7 +80,7 @@ function Router() {
 
   function ecran() {
   if (screen === "home") return <Home onNavigate={navigate} />;
-  if (screen === "du-jour") return <DuJour onNavigate={navigate} />;
+  if (screen === "jouer") return <Jouer onNavigate={navigate} />;
   if (screen === "login") return <Login screen={screen} onNavigate={navigate} />;
 
   if (screen.startsWith("chill-")) return <Chill screen={screen} onNavigate={navigate} />;

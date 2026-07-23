@@ -1,4 +1,4 @@
-import { Gamepad2, CalendarDays, Trophy, User } from "lucide-react";
+import { Home as HomeIcon, Gamepad2, Trophy, User } from "lucide-react";
 import { COLORS, FONT_BODY, tint } from "../design/theme";
 
 /**
@@ -10,8 +10,8 @@ import { COLORS, FONT_BODY, tint } from "../design/theme";
  * l'on est et comment revenir.
  */
 const ONGLETS = [
-  { id: "home", label: "Jouer", Icone: Gamepad2 },
-  { id: "du-jour", label: "Du jour", Icone: CalendarDays },
+  { id: "home", label: "Accueil", Icone: HomeIcon },
+  { id: "jouer", label: "Jouer", Icone: Gamepad2 },
   { id: "ranks", label: "Classement", Icone: Trophy },
   { id: "profile", label: "Profil", Icone: User },
 ];
