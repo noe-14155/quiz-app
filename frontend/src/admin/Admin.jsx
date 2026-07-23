@@ -18,10 +18,8 @@ const REPORT_LABELS = {
 };
 
 const SETTINGS_LABELS = {
-  ranked_k_low: "Classé — amplitude en bas de classement",
-  ranked_k_high: "Classé — amplitude au sommet",
-  ranked_loss_pass: "Classé — coût de passer (sous Génie uniquement)",
-  ranked_daily_decay: "Classé — perte par jour (dès Génie III)",
+  ranked_amplitude: "Classé — amplitude des variations de points",
+  ranked_daily_decay: "Classé — perte par jour (dès Champion III)",
   ranked_time_per_question: "Classé — durée par question (s)",
 };
 

@@ -53,12 +53,18 @@ function Router() {
   // partie, elle serait une invitation à quitter au mauvais moment.
   const surOnglet = ONGLETS_PRINCIPAUX.includes(screen);
 
+  // Colonne pleine hauteur : le contenu défile À L'INTÉRIEUR, la barre basse
+  // reste collée en bas sans dépendre de `position: fixed` — la seule façon
+  // fiable d'éviter qu'elle ne saute sur iPhone quand la barre d'adresse de
+  // Safari se rétracte.
   return (
-    <>
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <NetworkGuard />
-      {ecran()}
+      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
+        {ecran()}
+      </div>
       {surOnglet && <BottomNav actif={screen} onNavigate={navigate} />}
-    </>
+    </div>
   );
 
   function ecran() {

@@ -207,14 +207,53 @@ export default function Ranked({ screen, onNavigate }) {
           background: COLORS.card, border: `1px solid ${COLORS.cardAlt}`, borderRadius: 18,
           padding: 16, margin: "6px 0 18px",
         }}>
-          <p style={{ fontFamily: FONT_BODY, fontWeight: 800, fontSize: 13.5, color: COLORS.text, margin: 0 }}>
+          <p style={{ fontFamily: FONT_BODY, fontWeight: 800, fontSize: 13.5, color: COLORS.text, margin: "0 0 12px" }}>
             {rules?.nb_questions || 10} questions · {tpq} secondes chacune
           </p>
-          <p style={{ fontSize: 12.5, color: COLORS.muted, margin: "7px 0 0", lineHeight: 1.5 }}>
-            Ce que rapporte une réponse dépend de la difficulté de la question et de ton niveau :
-            réussir au-dessus de ton rang paie beaucoup, se tromper en dessous coûte cher.
-            {rules?.can_pass === false ? " Passer une question n'est plus autorisé à ton rang." : ""}
-          </p>
+
+          {rules?.bareme && (
+            <>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "13px 14px",
+                borderRadius: 14, background: tint(COLORS.gold, 8), marginBottom: 12,
+              }}>
+                <span style={{
+                  fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 26, color: COLORS.gold, lineHeight: 1,
+                }}>
+                  {rules.bareme.sur_dix}<span style={{ fontSize: 15 }}>/10</span>
+                </span>
+                <span style={{ fontSize: 12.5, color: COLORS.muted2, lineHeight: 1.4 }}>
+                  C'est ce qu'on attend de ton rang.<br />
+                  À ce score exactement, tu te maintiens.
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <div style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, background: tint(COLORS.success, 8) }}>
+                  <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, color: COLORS.muted, letterSpacing: 0.5 }}>
+                    BONNE RÉPONSE
+                  </span>
+                  <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 17, color: COLORS.success }}>
+                    +{rules.bareme.gain}
+                  </span>
+                </div>
+                <div style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, background: tint(COLORS.danger, 8) }}>
+                  <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, color: COLORS.muted, letterSpacing: 0.5 }}>
+                    ERREUR
+                  </span>
+                  <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 17, color: COLORS.danger }}>
+                    −{rules.bareme.perte}
+                  </span>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 12.5, color: COLORS.muted, margin: 0, lineHeight: 1.5 }}>
+                Plus tu montes, plus le niveau attendu est haut : une bonne réponse rapporte moins
+                et une erreur coûte davantage.
+                {rules?.can_pass === false ? " Passer n'est plus autorisé à ton rang." : ""}
+              </p>
+            </>
+          )}
         </div>
 
         <Button onClick={start} disabled={loading}>
@@ -239,7 +278,10 @@ export default function Ranked({ screen, onNavigate }) {
           rightLabel={`${timeLeft}s`}
           rightDanger={timeLeft <= 5}
           progressPct={Math.max(0, timePct)}
-          tags={[{ label: q.theme, color: COLORS.gold }]}
+          tags={[
+            { label: q.theme, color: COLORS.gold },
+            { label: `Niveau ${q.difficulte}`, color: COLORS.accent3 },
+          ]}
         />
         <QuizQuestion>{q.question}</QuizQuestion>
 

@@ -5,7 +5,6 @@ import { useThemeSettings } from "../design/ThemeContext";
 import { FEEDBACK, setFeedback } from "../design/feedback";
 import TopBar from "../components/TopBar";
 import Button from "../components/Button";
-import Collapsible from "../components/Collapsible";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
@@ -19,7 +18,6 @@ function ProfileBody({ profile }) {
   const xpNext = xpForLevel(level + 1);
   const progress = ((profile.xp_total - xpCurrent) / (xpNext - xpCurrent)) * 100;
   const t = tierInfo(profile.rank_tier);
-  const themes = Object.keys(profile.stats_by_theme || {});
 
   return (
     <>
@@ -55,22 +53,6 @@ function ProfileBody({ profile }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 22 }}>
-        <Collapsible title="Stats par thème" count={themes.length}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {themes.length === 0 && <p style={{ color: COLORS.muted, fontSize: 13 }}>Pas encore joué.</p>}
-            {themes.map((t2) => {
-              const s = profile.stats_by_theme[t2];
-              return (
-                <div key={t2} style={{ background: COLORS.card, borderRadius: 12, padding: "10px 16px", display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 14, fontWeight: 700 }}>{t2}</span>
-                  <span style={{ fontSize: 13, color: COLORS.muted }}>{s.pct}% (sur {s.attempted} question{s.attempted > 1 ? "s" : ""})</span>
-                </div>
-              );
-            })}
-          </div>
-        </Collapsible>
-      </div>
     </>
   );
 }

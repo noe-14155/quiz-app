@@ -29,17 +29,25 @@
 
       * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+      /* Sur iPhone, laisser le corps défiler fait apparaître et disparaître la
+         barre d'adresse, ce qui décale tout élément fixé en bas. On bloque donc
+         le défilement du corps : c'est un conteneur interne qui défile. */
+      html, body {
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
       body {
         touch-action: manipulation;
         font-family: 'Nunito', system-ui, sans-serif;
         background: #eceef4;
         display: flex;
         justify-content: center;
-        min-height: 100vh;
       }
 
       /* La carte principale de l'app est centrée ; sur mobile elle prend tout l'écran. */
-      #root { width: 100%; max-width: 480px; }
+      #root { width: 100%; max-width: 480px; height: 100dvh; }
 
       /* Les boutons réagissent au toucher partout dans l'app. */
       button { font-family: inherit; transition: transform .15s; }

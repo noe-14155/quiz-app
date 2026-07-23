@@ -19,12 +19,14 @@ const ONGLETS = [
 export const ONGLETS_PRINCIPAUX = ONGLETS.map((o) => o.id);
 
 export default function BottomNav({ actif, onNavigate }) {
+  // La barre n'est PAS en position fixe : elle est le dernier élément d'une
+  // colonne pleine hauteur (voir App.jsx). Sur iPhone, `position: fixed` se
+  // décale au rythme de la barre d'adresse de Safari, qui apparaît et disparaît
+  // au défilement — la barre semblait alors « flotter » et sauter.
   return (
     <>
-      {/* Réserve la hauteur de la barre pour que le contenu ne passe pas dessous. */}
-      <div style={{ height: 78 }} />
       <nav style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
+        flexShrink: 0, zIndex: 50,
         display: "flex", justifyContent: "center",
         background: COLORS.bg, borderTop: `1px solid ${COLORS.cardAlt}`,
         paddingBottom: "env(safe-area-inset-bottom, 0px)",

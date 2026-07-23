@@ -166,19 +166,20 @@ export const sectionLabel = {
  * ------------------------------------------------------------------------- */
 
 export const RANKS = [
-  { name: "Neurone", color: "#AEB4C4", color2: "#8A93A5", min: 0, max: 199 },
-  { name: "Curieux", color: "#54D0F5", color2: "#38BDF8", min: 200, max: 499 },
-  { name: "Malin", color: "#2ED9B0", color2: "#12B981", min: 500, max: 999 },
-  { name: "Grosse Tête", color: "#FFA351", color2: "#FF8A3D", min: 1000, max: 1499 },
-  { name: "Génie", color: "#FF7FAE", color2: "#FF4D9D", min: 1500, max: 2999 },
-  { name: "Prodige", color: "#9B7FE8", color2: "#7C4DFF", min: 3000, max: null },
+  { name: "Figurant", color: "#AEB4C4", color2: "#8A93A5", min: 0, max: 199 },
+  { name: "Candidat", color: "#5FC9F8", color2: "#2AA9E0", min: 200, max: 499 },
+  { name: "Qualifié", color: "#3DDCA0", color2: "#12B981", min: 500, max: 999 },
+  { name: "Finaliste", color: "#FFB25C", color2: "#F58A1F", min: 1000, max: 1799 },
+  { name: "Champion", color: "#FF7FAE", color2: "#F0417C", min: 1800, max: 2999 },
+  { name: "Maître de Midi", color: "#A98BFF", color2: "#7C4DFF", min: 3000, max: 4999 },
+  { name: "Hall of Fame", color: "#FFD65C", color2: "#E0A21A", min: 5000, max: null },
 ];
 export const PALIER_LABELS = ["III", "II", "I"];
 const TIERS_PER_RANK = 3;
-export const MAX_TIER = RANKS.length * TIERS_PER_RANK - 1; // 17
+export const MAX_TIER = RANKS.length * TIERS_PER_RANK - 1; // 20
 
 /** Rang à partir duquel passer est interdit et la perte quotidienne s'applique. */
-export const LOCK_RANK_INDEX = 4; // Génie
+export const LOCK_RANK_INDEX = 4; // Champion
 
 export function tierInfo(tier) {
   // 6 rangs x 3 paliers = 18 niveaux (0..17). Au-delà, on reste au sommet.
@@ -214,7 +215,6 @@ export const cardWrap = {
   maxWidth: 480,
   margin: "0 auto",
   boxSizing: "border-box",
-  minHeight: "100vh",
 };
 Object.defineProperty(cardWrap, "background", { get: () => COLORS.bg, enumerable: true });
 Object.defineProperty(cardWrap, "color", { get: () => COLORS.text, enumerable: true });
