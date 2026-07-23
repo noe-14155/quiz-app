@@ -72,7 +72,13 @@ function Router() {
         WebkitOverflowScrolling: "touch",   // inertie de défilement sur iOS
         overscrollBehaviorY: "contain",     // le corps ne défile pas derrière
       }}>
-        {ecran()}
+        {/* Un pixel de plus que le conteneur : iOS n'autorise le rebond élastique
+            que si le contenu dépasse, même d'un cheveu. Sans cette astuce, les
+            écrans courts semblent figés au toucher — on tire et rien ne bouge,
+            ce qui donne une impression de raideur. */}
+        <div style={{ minHeight: "calc(100% + 1px)" }}>
+          {ecran()}
+        </div>
       </div>
       {surOnglet && <BottomNav actif={screen} onNavigate={navigate} />}
     </div>

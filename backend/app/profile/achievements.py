@@ -30,6 +30,25 @@ CATALOGUE = [
     ("rang_hall",        "Hall of Fame",        "Entrer au Hall of Fame",                      "Progression"),
     ("xp_1000",          "Mille",               "Cumuler 1 000 XP",                            "Progression"),
     ("xp_5000",          "Cinq mille",          "Cumuler 5 000 XP",                            "Progression"),
+    ("xp_15000",         "Quinze mille",        "Cumuler 15 000 XP",                           "Progression"),
+
+    ("cent_parties",     "Marathonien",         "Jouer 100 parties classées",                  "Assiduité"),
+    ("serie_100",        "Increvable",          "Défi du jour 100 jours d'affilée",            "Assiduité"),
+    ("cinq_cents_q",     "Bibliothèque",        "Répondre à 500 questions différentes",        "Assiduité"),
+
+    ("survie_20",        "Increvable en survie","Tenir 20 questions d'affilée en Survie",      "Performance"),
+    ("survie_40",        "Inarrêtable",         "Tenir 40 questions d'affilée en Survie",      "Performance"),
+    ("chrono_25",        "Vif",                 "25 bonnes réponses au contre-la-montre",      "Performance"),
+    ("chrono_35",        "Foudroyant",          "35 bonnes réponses au contre-la-montre",      "Performance"),
+    ("daily_parfait_5",  "Métronome",           "Cinq fois 10/10 au défi du jour",             "Performance"),
+
+    ("duel_premier",     "Provocateur",         "Terminer un premier duel",                    "Découverte"),
+    ("duel_5_gagnes",    "Duelliste",           "Gagner cinq duels",                           "Performance"),
+    ("enigme_premiere",  "Petit malin",         "Résoudre une première énigme",                "Découverte"),
+    ("enigme_sans_aide", "Sans filet",          "Résoudre une énigme sans aucun indice",       "Performance"),
+    ("enigme_10",        "Fin limier",          "Résoudre dix énigmes",                        "Assiduité"),
+
+    ("polyvalent",       "Touche-à-tout",       "Jouer à cinq modes différents",               "Découverte"),
 ]
 
 _PAR_CODE = {c[0]: {"code": c[0], "titre": c[1], "description": c[2], "categorie": c[3]} for c in CATALOGUE}
@@ -76,6 +95,45 @@ def evaluer(user_id: int, pseudo: str = None, contexte: dict = None):
         meilleur_daily = conn.execute(
             "SELECT MAX(score) m, MAX(total) t FROM daily_attempts WHERE pseudo = ?", (pseudo,)
         ).fetchone()
+        daily_parfaits = conn.execute(
+            "SELECT COUNT(*) c FROM daily_attempts WHERE pseudo = ? AND score = total AND total > 0", (pseudo,)
+        ).fetchone()["c"]
+
+        nb_questions = conn.execute(
+            "SELECT COUNT(*) c FROM question_results WHERE user_id = ?", (user_id,)
+        ).fetchone()["c"]
+
+        # Records des modes rapides
+        records = {r["mode"]: r["score"] for r in conn.execute(
+            "SELECT mode, score FROM arcade_records WHERE user_id = ?", (user_id,)
+        ).fetchall()}
+
+        # Duels : terminés et gagnés
+        duels_joues = conn.execute(
+            "SELECT COUNT(*) c FROM duel_players WHERE pseudo = ?", (pseudo,)
+        ).fetchone()["c"]
+        duels_gagnes = conn.execute(
+            "SELECT COUNT(*) c FROM duel_players moi "
+            "WHERE moi.pseudo = ? AND EXISTS ("
+            "  SELECT 1 FROM duel_players autre WHERE autre.code = moi.code "
+            "  AND autre.pseudo <> moi.pseudo AND autre.score < moi.score)",
+            (pseudo,),
+        ).fetchone()["c"]
+
+        # Énigmes résolues, et au moins une sans le moindre indice
+        enigmes = conn.execute(
+            "SELECT COUNT(*) c FROM enigme_attempts WHERE pseudo = ? AND trouve = 1", (pseudo,)
+        ).fetchone()["c"]
+        enigme_pure = conn.execute(
+            "SELECT COUNT(*) c FROM enigme_attempts WHERE pseudo = ? AND trouve = 1 AND indices = 0",
+            (pseudo,),
+        ).fetchone()["c"]
+
+        # Modes différents essayés, d'après le journal d'activité
+        modes_essayes = conn.execute(
+            "SELECT COUNT(DISTINCT event) c FROM activity_log "
+            "WHERE pseudo = ? AND event LIKE '%\\_start' ESCAPE '\\'", (pseudo,)
+        ).fetchone()["c"]
 
         regles = {
             "premiere_partie":   nb_parties >= 1,
@@ -95,6 +153,25 @@ def evaluer(user_id: int, pseudo: str = None, contexte: dict = None):
             "rang_hall":         rang_index >= 6,
             "xp_1000":           u["xp_total"] >= 1000,
             "xp_5000":           u["xp_total"] >= 5000,
+            "xp_15000":          u["xp_total"] >= 15000,
+
+            "cent_parties":      nb_parties >= 100,
+            "serie_100":         serie["best"] >= 100,
+            "cinq_cents_q":      nb_questions >= 500,
+
+            "survie_20":         records.get("survie", 0) >= 20,
+            "survie_40":         records.get("survie", 0) >= 40,
+            "chrono_25":         records.get("chrono", 0) >= 25,
+            "chrono_35":         records.get("chrono", 0) >= 35,
+            "daily_parfait_5":   daily_parfaits >= 5,
+
+            "duel_premier":      duels_joues >= 1,
+            "duel_5_gagnes":     duels_gagnes >= 5,
+            "enigme_premiere":   enigmes >= 1,
+            "enigme_sans_aide":  enigme_pure >= 1,
+            "enigme_10":         enigmes >= 10,
+
+            "polyvalent":        modes_essayes >= 5,
         }
 
         maintenant = datetime.now(timezone.utc).isoformat()
