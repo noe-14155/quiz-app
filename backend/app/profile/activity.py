@@ -22,6 +22,10 @@ EVENTS = {
     "ranked_start": "Partie classée",
     "local_start": "Partie locale",
     "daily_start": "Défi du jour",
+    "survie_start": "Partie survie",
+    "chrono_start": "Contre-la-montre",
+    "duel_start": "Duel",
+    "enigme_start": "Énigme du jour",
 }
 
 

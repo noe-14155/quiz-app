@@ -14,7 +14,21 @@ export async function apiFetch(path, options = {}) {
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  // Une coupure réseau lève une TypeError peu parlante ("Failed to fetch").
+  // On la traduit en message compréhensible, et on la marque pour que les
+  // écrans puissent la traiter différemment d'une vraie erreur serveur.
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch (e) {
+    const err = new Error(
+      navigator.onLine
+        ? "Le serveur ne répond pas. Réessaie dans un instant."
+        : "Pas de connexion internet."
+    );
+    err.reseau = true;
+    throw err;
+  }
   let data = null;
   try {
     data = await res.json();
@@ -24,7 +38,10 @@ export async function apiFetch(path, options = {}) {
 
   if (!res.ok) {
     const message = data?.detail;
-    throw new Error(typeof message === "string" ? message : `Erreur ${res.status}`);
+    const err = new Error(typeof message === "string" ? message : `Erreur ${res.status}`);
+    err.status = res.status;
+    // 429 : trop de tentatives — l'écran de connexion l'affiche tel quel.
+    throw err;
   }
   return data;
 }

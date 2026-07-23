@@ -104,3 +104,56 @@ def leaderboard(date_str: str = None, limit: int = 20):
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def streak(pseudo: str, date_str: str = None):
+    """Série de jours consécutifs joués par ce joueur.
+
+    Renvoie {"current": n, "best": m, "played_today": bool}.
+    La série courante tolère de ne pas avoir encore joué AUJOURD'HUI : tant que
+    la veille est jouée, la série est vivante (sinon elle semblerait rompue
+    chaque matin). Elle ne casse que si un jour entier a été sauté.
+    """
+    if not pseudo:
+        return {"current": 0, "best": 0, "played_today": False}
+
+    from datetime import date, timedelta
+    aujourdhui = date.fromisoformat(date_str or today_str())
+
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT date FROM daily_attempts WHERE pseudo = ? ORDER BY date DESC", (pseudo,)
+    ).fetchall()
+    conn.close()
+
+    jours = []
+    for r in rows:
+        try:
+            jours.append(date.fromisoformat(r["date"]))
+        except (TypeError, ValueError):
+            continue
+    if not jours:
+        return {"current": 0, "best": 0, "played_today": False}
+
+    joue_aujourdhui = jours[0] == aujourdhui
+
+    # Série courante : on part d'aujourd'hui (ou d'hier si pas encore joué).
+    depart = aujourdhui if joue_aujourdhui else aujourdhui - timedelta(days=1)
+    ensemble = set(jours)
+    courante = 0
+    curseur = depart
+    while curseur in ensemble:
+        courante += 1
+        curseur -= timedelta(days=1)
+
+    # Meilleure série de tous les temps.
+    ordonnes = sorted(ensemble)
+    meilleure = actuelle = 1
+    for i in range(1, len(ordonnes)):
+        if (ordonnes[i] - ordonnes[i - 1]).days == 1:
+            actuelle += 1
+        else:
+            actuelle = 1
+        meilleure = max(meilleure, actuelle)
+
+    return {"current": courante, "best": max(meilleure, courante), "played_today": joue_aujourdhui}

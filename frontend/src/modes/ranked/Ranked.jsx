@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { SkipForward, Check, X, Trophy } from "lucide-react";
+import { SkipForward, Check, X } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, tint, rankGradient, RANKS } from "../../design/theme";
 import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
 import QuitConfirmModal from "../../components/QuitConfirmModal";
 import SearchLink from "../../components/SearchLink";
+import ReportButton from "../../components/ReportButton";
 import QuizHeader, { QuizTopLine, QuizQuestion, Explanation } from "../../components/QuizHeader";
 import BigScore from "../../components/BigScore";
 import PageTitle from "../../components/PageTitle";
@@ -129,10 +130,20 @@ export default function Ranked({ screen, onNavigate }) {
     answerQuestion(null);
   }
 
-  function next() {
+  const [newAchievements, setNewAchievements] = useState([]);
+
+  async function next() {
     if (index + 1 >= pool.length) {
       setPhase("results");
       onNavigate("ranked-results");
+      // Fin de partie : consolide le score et débloque les succès éventuels.
+      try {
+        const r = await apiFetch("/api/ranked/finish", {
+          method: "POST",
+          body: JSON.stringify({ party_id: partyId, correct: correctCount, total: pool.length }),
+        });
+        setNewAchievements(r.achievements || []);
+      } catch (e) { /* sans incidence sur la partie */ }
     } else {
       setIndex((i) => i + 1);
       setAnswered(null);
@@ -152,7 +163,22 @@ export default function Ranked({ screen, onNavigate }) {
       <div style={cardWrap}>
         <TopBar screen="ranked-setup" onNavigate={onNavigate} />
         <PageTitle subtitle="Chrono, points et rang en jeu.">Mode classé</PageTitle>
-        {user && <RankBadge tier={user.rank_tier} points={user.rank_points} progress={user.rank_progress} />}
+        {newAchievements.length > 0 && (
+        <div style={{
+          background: tint(COLORS.gold, 10), border: `1.5px solid ${COLORS.gold}`,
+          borderRadius: 16, padding: 14, marginBottom: 14,
+        }}>
+          <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.gold, margin: "0 0 6px" }}>
+            {newAchievements.length > 1 ? "Nouveaux succès" : "Nouveau succès"}
+          </p>
+          {newAchievements.map((a) => (
+            <p key={a.code} style={{ fontSize: 13, color: COLORS.text, margin: "3px 0 0", fontWeight: 700 }}>
+              {a.titre} <span style={{ color: COLORS.muted, fontWeight: 400 }}>— {a.description}</span>
+            </p>
+          ))}
+        </div>
+      )}
+      {user && <RankBadge tier={user.rank_tier} points={user.rank_points} progress={user.rank_progress} />}
         <div style={{
           background: COLORS.card, border: `1px solid ${COLORS.cardAlt}`, borderRadius: 18,
           padding: 16, margin: "18px 0",
@@ -221,16 +247,7 @@ export default function Ranked({ screen, onNavigate }) {
         <Button onClick={start} disabled={loading}>
           {loading ? "Chargement..." : "Lancer une partie classée"}
         </Button>
-        <button
-          onClick={() => onNavigate("leaderboard")}
-          style={{
-            width: "100%", marginTop: 10, background: COLORS.soft, border: "none", borderRadius: 16,
-            padding: 15, fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, color: COLORS.text,
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          }}
-        >
-          <Trophy size={16} /> Voir le classement
-        </button>
+
       </div>
     );
   }
@@ -287,6 +304,7 @@ export default function Ranked({ screen, onNavigate }) {
             >
               <div style={{ marginTop: 10 }}>
                 <SearchLink question={q.question} reponse={q.choix[reveal.bonne_reponse - 1]} />
+                <ReportButton questionId={q.id} />
               </div>
             </Explanation>
             <div style={{ height: 14 }} />
@@ -308,6 +326,21 @@ export default function Ranked({ screen, onNavigate }) {
         label="Partie classée"
         subtitle={user ? `${user.rank_points} points au total` : null}
       />
+      {newAchievements.length > 0 && (
+        <div style={{
+          background: tint(COLORS.gold, 10), border: `1.5px solid ${COLORS.gold}`,
+          borderRadius: 16, padding: 14, marginBottom: 14,
+        }}>
+          <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.gold, margin: "0 0 6px" }}>
+            {newAchievements.length > 1 ? "Nouveaux succès" : "Nouveau succès"}
+          </p>
+          {newAchievements.map((a) => (
+            <p key={a.code} style={{ fontSize: 13, color: COLORS.text, margin: "3px 0 0", fontWeight: 700 }}>
+              {a.titre} <span style={{ color: COLORS.muted, fontWeight: 400 }}>— {a.description}</span>
+            </p>
+          ))}
+        </div>
+      )}
       {user && <RankBadge tier={user.rank_tier} points={user.rank_points} progress={user.rank_progress} />}
       <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
         <Button variant="secondary" onClick={() => onNavigate("home")} style={{ flex: 1 }}>Accueil</Button>

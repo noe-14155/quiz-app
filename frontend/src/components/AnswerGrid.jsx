@@ -1,5 +1,6 @@
 import { Check, X } from "lucide-react";
 import { COLORS, FONT_DISPLAY } from "../design/theme";
+import { feedbackBon, feedbackMauvais } from "../design/feedback";
 
 /**
  * Grille de réponses façon plateau de jeu : 4 tuiles pleines et colorées,
@@ -17,6 +18,16 @@ const SHAPES = [
 
 export default function AnswerGrid({ choix, answered, correctIndex, onPick, revealCorrectness = true }) {
   const isAnswered = answered !== null && answered !== undefined;
+
+  function choisir(i) {
+    // Retour tactile immédiat, avant même la réponse du serveur : c'est ce qui
+    // rend le clic satisfaisant. Quand la correction n'est pas connue tout de
+    // suite (duel, journalier), on se contente d'une vibration neutre.
+    if (correctIndex !== undefined && correctIndex !== null) {
+      i === correctIndex ? feedbackBon() : feedbackMauvais();
+    }
+    onPick(i);
+  }
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 13, marginBottom: 12 }}>
@@ -48,7 +59,7 @@ export default function AnswerGrid({ choix, answered, correctIndex, onPick, reve
         return (
           <button
             key={i}
-            onClick={() => onPick(i)}
+            onClick={() => choisir(i)}
             disabled={isAnswered}
             style={{
               minHeight: 92,

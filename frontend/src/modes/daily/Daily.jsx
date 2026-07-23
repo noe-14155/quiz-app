@@ -5,6 +5,8 @@ import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
 import SearchLink from "../../components/SearchLink";
+import ReportButton from "../../components/ReportButton";
+import StreakBadge from "../../components/StreakBadge";
 import QuizHeader, { QuizTopLine, QuizQuestion } from "../../components/QuizHeader";
 import BigScore from "../../components/BigScore";
 import { apiFetch } from "../../api/client";
@@ -116,6 +118,7 @@ export default function Daily({ screen, onNavigate }) {
                   <p style={{ margin: "6px 0 8px", fontSize: 13, lineHeight: 1.5, color: COLORS.muted }}>{d.explication}</p>
                 )}
                 <SearchLink question={d.question} reponse={d.choix[d.correct_index]} />
+                <ReportButton questionId={d.question_id} />
               </div>
             );
           })}
@@ -137,6 +140,23 @@ export default function Daily({ screen, onNavigate }) {
             ? (user ? "Tu avais déjà joué aujourd'hui — ce score n'est pas comptabilisé." : "Connecte-toi pour apparaître au classement.")
             : "Reviens demain pour un nouveau défi !"}
         />
+
+        {result.streak && <StreakBadge streak={result.streak} />}
+        {result.achievements && result.achievements.length > 0 && (
+          <div style={{
+            background: tint(COLORS.gold, 10), border: `1.5px solid ${COLORS.gold}`,
+            borderRadius: 16, padding: 14, marginBottom: 16,
+          }}>
+            <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.gold, margin: "0 0 6px" }}>
+              {result.achievements.length > 1 ? "Nouveaux succès" : "Nouveau succès"}
+            </p>
+            {result.achievements.map((a) => (
+              <p key={a.code} style={{ fontSize: 13, color: COLORS.text, margin: "3px 0 0", fontWeight: 700 }}>
+                {a.titre} <span style={{ color: COLORS.muted, fontWeight: 400 }}>— {a.description}</span>
+              </p>
+            ))}
+          </div>
+        )}
 
         <CorrectionBlock details={result.details} />
 
@@ -160,6 +180,8 @@ export default function Daily({ screen, onNavigate }) {
           </h2>
           <p style={{ fontSize: 13, color: COLORS.muted, margin: "6px 0 0" }}>Reviens demain pour un nouveau défi !</p>
         </div>
+
+        {data.streak && <StreakBadge streak={data.streak} />}
 
         {data.review && (
           <>

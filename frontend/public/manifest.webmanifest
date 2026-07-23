@@ -1,0 +1,16 @@
+{
+  "name": "SquizzYourBrain",
+  "short_name": "Squizz",
+  "description": "Quiz de culture générale : défi du jour, mode classé, duels entre amis.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eceef4",
+  "theme_color": "#7C4DFF",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

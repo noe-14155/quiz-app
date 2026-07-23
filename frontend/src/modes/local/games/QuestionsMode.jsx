@@ -7,6 +7,7 @@ import QuitConfirmModal from "../../../components/QuitConfirmModal";
 import { Check } from "lucide-react";
 import { apiFetch } from "../../../api/client";
 
+
 const THEMES = [
   "Cinéma/Séries", "Géographie", "Histoire", "Pays", "Acteurs/Célébrités",
   "Anecdotes", "Sciences & Nature", "Sport", "Art & Littérature", "Gastronomie", "Technologie & Internet",

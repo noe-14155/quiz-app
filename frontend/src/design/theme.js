@@ -129,6 +129,7 @@ export const TILE_THEMES = {
   chill:  { from: "#e3f8f1", to: "#d3f3e8", border: "#c2ecdd", dot: "#12B981", title: "#0a8f63", sub: "#6fa593" },
   local:  { from: "#fff1e4", to: "#ffe6d2", border: "#ffd9bd", dot: "#FF8A3D", title: "#d9701f", sub: "#bb8b64" },
   daily:  { from: "#ffe9f2", to: "#ffdcea", border: "#ffc9de", dot: "#FF4D9D", title: "#c9327a", sub: "#b3799a" },
+  duel:   { from: "#e7f0ff", to: "#d7e6ff", border: "#c3daff", dot: "#3B82F6", title: "#1d4ed8", sub: "#7189b8" },
 };
 
 /** Dégradé « signature » à trois couleurs (carte de rang, badges). */

@@ -6,6 +6,7 @@ from app.modes.ranked import rank_config
 from app.modes.admin.service import get_settings
 from app.modes.ranked.decay import apply_daily_decay
 from app.profile import stats
+from app.profile import achievements
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -33,7 +34,29 @@ def my_profile(user=Depends(get_current_user)):
     updated_points = apply_daily_decay(user["id"], user["rank_points"], user["last_decay_date"] if "last_decay_date" in user.keys() else None)
     user = dict(user)
     user["rank_points"] = updated_points
-    return {**_build_profile(user), "is_admin": bool(user["is_admin"])}
+    # Relevé quotidien, pour pouvoir tracer la progression dans le temps.
+    stats.releve_du_jour(user["id"], updated_points)
+    # Les succès sont aussi réévalués ICI, et pas seulement en fin de partie :
+    # l'XP et les séries progressent via des modes qui ne déclenchaient aucune
+    # évaluation (survie, duel, énigme), et un succès atteint restait alors
+    # invisible jusqu'à la partie classée suivante.
+    achievements.evaluer(user["id"], user["pseudo"])
+    return {
+        **_build_profile(user),
+        "is_admin": bool(user["is_admin"]),
+        "achievements": achievements.lister(user["id"]),
+    }
+
+
+@router.get("/me/stats")
+def my_stats(user=Depends(get_current_user)):
+    """Statistiques détaillées : progression, régularité, thèmes forts/faibles."""
+    tf = stats.points_forts_faibles(user["id"])
+    return {
+        "historique_points": stats.historique_points(user["id"]),
+        "parties_par_jour": stats.parties_par_jour(user["id"]),
+        **tf,
+    }
 
 
 @router.get("/{pseudo}")

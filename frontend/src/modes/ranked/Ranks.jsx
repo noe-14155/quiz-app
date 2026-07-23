@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, Brain } from "lucide-react";
+import { Brain } from "lucide-react";
 import {
   cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, RANKS, sectionLabel,
 } from "../../design/theme";
 import RankLadder from "../../components/RankLadder";
+import Leaderboard from "./Leaderboard";
 import { apiFetch } from "../../api/client";
 
 /**
@@ -21,23 +22,12 @@ export default function Ranks({ onNavigate }) {
 
   return (
     <div style={cardWrap}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0 18px" }}>
-        <button
-          onClick={() => onNavigate("home")}
-          aria-label="Retour"
-          style={{
-            width: 36, height: 36, borderRadius: 11, background: COLORS.soft, border: "none",
-            color: COLORS.muted2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, color: COLORS.text }}>
-          Rangs
-        </h2>
-      </div>
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 26, margin: "14px 0 18px", color: COLORS.text }}>
+        Classement
+      </h2>
 
       {error && <p style={{ color: COLORS.danger, fontSize: 13 }}>{error}</p>}
+      {!data && !error && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement…</p>}
 
       {data && (
         <div style={{
@@ -82,7 +72,10 @@ export default function Ranks({ onNavigate }) {
         </div>
       )}
 
-      <p style={{ ...sectionLabel, margin: "0 0 12px" }}>L'échelle</p>
+      <p style={sectionLabel}>Les joueurs</p>
+      <Leaderboard onNavigate={onNavigate} sansEnTete />
+
+      <p style={sectionLabel}>L'échelle des rangs</p>
       {data && <RankLadder ladder={data.ladder} ranks={RANKS} />}
     </div>
   );

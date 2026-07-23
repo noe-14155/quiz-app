@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { LogOut, Sparkles, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { LogOut, Sparkles, ChevronRight, Sun, Moon, Award, Lock } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, gradient, rankGradient, sectionLabel, tint, ACCENT_OPTIONS } from "../design/theme";
 import { useThemeSettings } from "../design/ThemeContext";
+import { FEEDBACK, setFeedback } from "../design/feedback";
 import TopBar from "../components/TopBar";
+import Button from "../components/Button";
 import Collapsible from "../components/Collapsible";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -95,6 +97,25 @@ function Row({ label, sub, children, last, onClick, danger }) {
   );
 }
 
+/** Interrupteur, aux dimensions utilisées partout dans l'application. */
+function Interrupteur({ actif, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        width: 48, height: 28, borderRadius: 20, border: "none", cursor: "pointer",
+        position: "relative", flexShrink: 0,
+        background: actif ? COLORS.gold : COLORS.cardAlt, transition: "background .2s",
+      }}
+    >
+      <span style={{
+        position: "absolute", top: 3, left: actif ? 23 : 3, width: 22, height: 22, borderRadius: "50%",
+        background: "#fff", transition: "left .2s", boxShadow: "0 2px 5px rgba(0,0,0,.2)",
+      }} />
+    </button>
+  );
+}
+
 function Section({ title, children, pad = "4px 16px" }) {
   return (
     <>
@@ -113,29 +134,83 @@ function Section({ title, children, pad = "4px 16px" }) {
 export function Profile({ screen, onNavigate }) {
   const { user, logout } = useAuth();
   const { mode, accent, setMode, setAccent } = useThemeSettings();
-  if (!user) return null;
+  const [fb, setFb] = useState(FEEDBACK);
+
+  function majFeedback(patch) {
+    setFeedback(patch);
+    setFb({ ...FEEDBACK });
+  }
+
+  // Un écran blanc serait déroutant : si on arrive ici sans compte (lien direct,
+  // session expirée), on invite explicitement à se connecter.
+  if (!user) {
+    return (
+      <div style={cardWrap}>
+        <div style={{ textAlign: "center", paddingTop: 60 }}>
+          <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 20, color: COLORS.text, margin: "0 0 6px" }}>
+            Tu n'es pas connecté
+          </p>
+          <p style={{ fontSize: 13.5, color: COLORS.muted, margin: "0 0 22px", lineHeight: 1.5 }}>
+            Connecte-toi pour retrouver ton rang, tes succès et tes réglages.
+          </p>
+          <Button onClick={() => onNavigate("login")}>Se connecter</Button>
+          <div style={{ height: 10 }} />
+          <Button variant="secondary" onClick={() => onNavigate("home")}>Accueil</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={cardWrap}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0 18px" }}>
-        <button
-          onClick={() => onNavigate("home")}
-          aria-label="Retour"
-          style={{
-            width: 36, height: 36, borderRadius: 11, background: COLORS.soft, border: "none",
-            color: COLORS.muted2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, color: COLORS.text }}>
-          Profil &amp; réglages
-        </h2>
-      </div>
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 26, margin: "14px 0 18px", color: COLORS.text }}>
+        Profil
+      </h2>
 
       <ProfileBody profile={user} />
 
       <div style={{ height: 24 }} />
+
+      {user.achievements && (
+        <>
+          <p style={{ ...sectionLabel, margin: "6px 0 10px" }}>
+            Succès <span style={{ color: COLORS.gold }}>
+              {user.achievements.filter((a) => a.unlocked).length}/{user.achievements.length}
+            </span>
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 18 }}>
+            {user.achievements.map((a) => (
+              <div
+                key={a.code}
+                style={{
+                  display: "flex", alignItems: "center", gap: 11, padding: "10px 13px", borderRadius: 14,
+                  background: a.unlocked ? tint(COLORS.gold, 8) : COLORS.card,
+                  border: `1px solid ${a.unlocked ? COLORS.gold : COLORS.cardAlt}`,
+                  opacity: a.unlocked ? 1 : 0.55,
+                }}
+              >
+                <span style={{
+                  width: 30, height: 30, borderRadius: 10, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: a.unlocked ? gradient(135) : COLORS.soft,
+                }}>
+                  {a.unlocked
+                    ? <Award size={15} color="#fff" />
+                    : <Lock size={13} color={COLORS.muted} />}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <b style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.text }}>
+                    {a.titre}
+                  </b>
+                  <small style={{ fontFamily: FONT_BODY, fontSize: 11.5, color: COLORS.muted }}>
+                    {a.description}
+                  </small>
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <Section title="Apparence" pad="14px 16px">
         <p style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 14, color: COLORS.text, margin: "0 0 10px" }}>Thème</p>
@@ -175,6 +250,22 @@ export function Profile({ screen, onNavigate }) {
             />
           ))}
         </div>
+      </Section>
+
+      <Section title="Analyse">
+        <Row label="Statistiques détaillées" sub="Progression, régularité, thèmes forts et faibles" last
+             onClick={() => onNavigate("stats")}>
+          <ChevronRight size={18} color={COLORS.chevron} />
+        </Row>
+      </Section>
+
+      <Section title="Sensations" pad="4px 16px">
+        <Row label="Vibrations" sub="Retour tactile à chaque réponse">
+          <Interrupteur actif={fb.vibration} onToggle={() => majFeedback({ vibration: !fb.vibration })} />
+        </Row>
+        <Row label="Sons" sub="Petits repères sonores, discrets" last>
+          <Interrupteur actif={fb.son} onToggle={() => majFeedback({ son: !fb.son })} />
+        </Row>
       </Section>
 
       <Section title="Compte">

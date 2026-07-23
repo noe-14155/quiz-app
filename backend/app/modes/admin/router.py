@@ -73,3 +73,33 @@ def modes_toggle(admin=Depends(get_current_admin)):
     """Alias pratique pour la page admin : les 4 interrupteurs, sans avoir à
     fouiller dans l'ensemble des réglages."""
     return service.get_modes_status()
+
+
+@router.get("/reports")
+def get_reports(status: str = "ouvert", admin=Depends(get_current_admin)):
+    """Questions signalées par les joueurs, avec leur contenu pour arbitrer."""
+    return service.list_reports(status=status)
+
+
+@router.post("/reports/{report_id}/resolve")
+def resolve_report(report_id: int, admin=Depends(get_current_admin)):
+    return service.resolve_report(report_id)
+
+
+class PasswordPayload(BaseModel):
+    password: str
+
+
+@router.post("/users/{user_id}/password")
+def set_password(user_id: int, payload: PasswordPayload, admin=Depends(get_current_admin)):
+    """Réinitialise le mot de passe d'un joueur bloqué. Déconnecte ses sessions."""
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 6 caractères")
+    return service.set_user_password(user_id, payload.password)
+
+
+@router.get("/backups")
+def get_backups(admin=Depends(get_current_admin)):
+    """Sauvegardes automatiques présentes sur le serveur."""
+    from app.core.backup import list_backups
+    return {"backups": list_backups()}

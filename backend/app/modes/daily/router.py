@@ -9,6 +9,7 @@ from app.modes.daily import service as daily_service
 from app.modes.admin.service import is_mode_enabled
 from app.profile.xp import xp_for_difficulty, award_xp
 from app.profile.activity import log_event
+from app.profile import achievements
 
 router = APIRouter(prefix="/api/daily", tags=["daily"])
 
@@ -30,6 +31,7 @@ def _build_details(full, answers):
         if ok:
             score += 1
         details.append({
+            "question_id": q["id"],  # nécessaire au bouton de signalement
             "question": q["question"],
             "theme": q["theme"],
             "choix": q["choix"],
@@ -63,6 +65,7 @@ def today(user=Depends(get_current_user_optional)):
         "review": review,           # détail des réponses passées, ou None
         "questions": None if already else daily_service.get_daily_questions(hide_answer=True),
         "leaderboard": daily_service.leaderboard(),
+        "streak": daily_service.streak(pseudo) if pseudo else None,
     }
 
 
@@ -91,10 +94,16 @@ def submit(payload: DailySubmit, user=Depends(get_current_user_optional)):
 
     log_event("daily_start", user_id=user["id"] if user else None, pseudo=pseudo)
 
+    # Les succès sont évalués APRÈS l'enregistrement, pour que la série et le
+    # score du jour soient déjà pris en compte.
+    nouveaux = achievements.evaluer(user["id"], pseudo) if (pseudo and not already) else []
+
     return {
         "score": score,
         "total": len(full),
         "details": details,
         "recorded": bool(pseudo and not already),
         "leaderboard": daily_service.leaderboard(),
+        "streak": daily_service.streak(pseudo) if pseudo else None,
+        "achievements": nouveaux,
     }

@@ -12,6 +12,7 @@ from app.questions import service as questions_service
 from app.modes.ranked import rank_config
 from app.profile.xp import xp_for_difficulty, award_xp
 from app.profile.activity import log_event
+from app.profile import achievements
 from app.modes.admin.service import is_mode_enabled, get_settings
 
 router = APIRouter(prefix="/api/ranked", tags=["ranked"])
@@ -63,6 +64,7 @@ def get_rules(user=Depends(get_current_user)):
         "nb_questions": rank_config.NB_QUESTIONS_PER_PARTY,
         # Tableau complet du barème par rang, pour l'affichage informatif au joueur.
         "scale": rank_config.full_scale(cfg),
+        "bareme": rank_config.bareme_joueur(user["rank_points"], cfg),
         "current_rank": rank_config.tier_info(user["rank_points"], cfg)["rank"],
         "daily_decay": int(cfg.get("ranked_daily_decay", rank_config.DEFAULTS["daily_decay"])),
         "decay_floor": rank_config.diamant_floor_points(cfg),
@@ -137,8 +139,22 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
         delta, result, correct = -rank_config.loss_for_pass(tier, cfg), "passee", False
     else:
         correct = payload.choice == question["bonne_reponse"] - 1
-        # Gain dégressif avec le rang, malus croissant avec le rang.
-        delta = rank_config.gain_for_tier(tier, cfg) if correct else -rank_config.loss_for_tier(tier, cfg)
+        # Barème adaptatif : le gain dépend de l'écart entre le niveau du joueur
+        # et celui de la question (difficulté déclarée, corrigée par le taux de
+        # réussite réel). Voir rank_config.delta_for.
+        st = conn.execute(
+            "SELECT vues, reussies FROM question_stats WHERE question_id = ?", (question["id"],)
+        ).fetchone()
+        delta = rank_config.delta_for(
+            user["rank_points"], question["difficulte"], correct, cfg,
+            vues=st["vues"] if st else 0, reussies=st["reussies"] if st else 0,
+        )
+        # Alimente la calibration pour les prochains joueurs.
+        conn.execute(
+            "INSERT INTO question_stats (question_id, vues, reussies) VALUES (?,1,?) "
+            "ON CONFLICT(question_id) DO UPDATE SET vues = vues + 1, reussies = reussies + ?",
+            (question["id"], 1 if correct else 0, 1 if correct else 0),
+        )
         result = "bonne" if correct else "mauvaise"
 
     new_rank_points = rank_config.apply_delta(user["rank_points"], delta)
@@ -160,12 +176,38 @@ def submit_answer(payload: AnswerPayload, user=Depends(get_current_user)):
     return {
         "correct": correct,
         "delta_points": delta,
+        "question_difficulte": question["difficulte"],
         "bonne_reponse": question["bonne_reponse"],
         "explication": question["explication"],
         "new_tier": new_tier,
         "new_rank_points": new_rank_points,
         "new_progress": rank_config.progress_in_tier(new_rank_points, cfg),
     }
+
+
+class FinishPayload(BaseModel):
+    party_id: int
+    correct: int
+    total: int
+
+
+@router.post("/finish")
+def finish(payload: FinishPayload, user=Depends(get_current_user)):
+    """Fin d'une partie classée : enregistre le score et évalue les succès.
+    Séparé de /answer pour n'évaluer qu'une fois par partie plutôt qu'à chaque
+    question."""
+    conn = get_connection()
+    conn.execute(
+        "UPDATE parties SET score = ? WHERE id = ? AND user_id = ?",
+        (payload.correct, payload.party_id, user["id"]),
+    )
+    conn.commit()
+    conn.close()
+    nouveaux = achievements.evaluer(
+        user["id"], user["pseudo"],
+        contexte={"ranked_sans_faute": payload.total > 0 and payload.correct == payload.total},
+    )
+    return {"achievements": nouveaux}
 
 
 @router.get("/ladder")

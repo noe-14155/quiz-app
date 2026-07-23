@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ThemeSettingsProvider, useThemeSettings } from "./design/ThemeContext";
+import NetworkGuard from "./components/NetworkGuard";
+import BottomNav, { ONGLETS_PRINCIPAUX } from "./components/BottomNav";
 import Home from "./Home";
 import Login from "./Login";
 import Chill from "./modes/chill/Chill";
@@ -11,7 +13,12 @@ import LocalChoice from "./modes/local/LocalChoice";
 import Mise from "./modes/local/games/Mise";
 import QuestionsMode from "./modes/local/games/QuestionsMode";
 import Daily from "./modes/daily/Daily";
+import DuJour from "./modes/daily/DuJour";
+import Arcade from "./modes/arcade/Arcade";
+import Duel from "./modes/duel/Duel";
+import Enigme from "./modes/enigme/Enigme";
 import { Profile, PublicProfile } from "./profile/Profile";
+import Stats from "./profile/Stats";
 import Admin from "./admin/Admin";
 
 function Router() {
@@ -40,7 +47,23 @@ function Router() {
 
   if (loading) return null;
 
-  if (screen === "home") return <Home screen={screen} onNavigate={navigate} />;
+  // Le bandeau de perte de connexion doit être visible depuis N'IMPORTE QUEL
+  // écran : on isole donc la cascade de routage et on l'enveloppe.
+  // La barre basse n'apparaît que sur les écrans « racine » : pendant une
+  // partie, elle serait une invitation à quitter au mauvais moment.
+  const surOnglet = ONGLETS_PRINCIPAUX.includes(screen);
+
+  return (
+    <>
+      <NetworkGuard />
+      {ecran()}
+      {surOnglet && <BottomNav actif={screen} onNavigate={navigate} />}
+    </>
+  );
+
+  function ecran() {
+  if (screen === "home") return <Home onNavigate={navigate} />;
+  if (screen === "du-jour") return <DuJour onNavigate={navigate} />;
   if (screen === "login") return <Login screen={screen} onNavigate={navigate} />;
 
   if (screen.startsWith("chill-")) return <Chill screen={screen} onNavigate={navigate} />;
@@ -50,15 +73,20 @@ function Router() {
 
   if (screen === "local-choice") return <LocalChoice screen={screen} onNavigate={navigate} />;
   if (screen === "daily") return <Daily screen={screen} onNavigate={navigate} />;
+  if (screen === "survie" || screen === "chrono") return <Arcade screen={screen} onNavigate={navigate} />;
+  if (screen === "duel") return <Duel onNavigate={navigate} />;
+  if (screen === "enigme") return <Enigme onNavigate={navigate} />;
   if (screen.startsWith("mise-")) return <Mise screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("questions-mode-")) return <QuestionsMode screen={screen} onNavigate={navigate} />;
 
 
   if (screen === "profile") return <Profile screen={screen} onNavigate={navigate} />;
+  if (screen === "stats") return <Stats onNavigate={navigate} />;
   if (screen === "public-profile") return <PublicProfile screen={screen} onNavigate={navigate} pseudo={viewedPseudo} />;
   if (screen === "admin") return <Admin screen={screen} onNavigate={navigate} />;
 
   return <Home screen="home" onNavigate={navigate} />;
+  }
 }
 
 export default function App() {

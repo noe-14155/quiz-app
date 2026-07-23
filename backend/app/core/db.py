@@ -79,6 +79,75 @@ def init_schema():
             PRIMARY KEY (date, pseudo)
         );
 
+        CREATE TABLE IF NOT EXISTS enigme_attempts (
+            date TEXT NOT NULL,
+            pseudo TEXT NOT NULL,
+            user_id INTEGER,
+            indices INTEGER NOT NULL DEFAULT 0,
+            erreurs INTEGER NOT NULL DEFAULT 0,
+            trouve INTEGER NOT NULL DEFAULT 0,
+            points INTEGER NOT NULL DEFAULT 0,
+            resolu_at TEXT,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (date, pseudo)
+        );
+
+        CREATE TABLE IF NOT EXISTS rank_history (
+            user_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            points INTEGER NOT NULL,
+            PRIMARY KEY (user_id, date)
+        );
+
+        CREATE TABLE IF NOT EXISTS duels (
+            code TEXT PRIMARY KEY,
+            host_pseudo TEXT NOT NULL,
+            questions_data TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS duel_players (
+            code TEXT NOT NULL,
+            pseudo TEXT NOT NULL,
+            user_id INTEGER,
+            score INTEGER NOT NULL,
+            answers TEXT,
+            played_at TEXT NOT NULL,
+            PRIMARY KEY (code, pseudo)
+        );
+
+        CREATE TABLE IF NOT EXISTS arcade_records (
+            user_id INTEGER NOT NULL,
+            pseudo TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, mode)
+        );
+
+        CREATE TABLE IF NOT EXISTS question_stats (
+            question_id INTEGER PRIMARY KEY,
+            vues INTEGER NOT NULL DEFAULT 0,
+            reussies INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS achievements (
+            user_id INTEGER NOT NULL,
+            code TEXT NOT NULL,
+            unlocked_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, code)
+        );
+
+        CREATE TABLE IF NOT EXISTS question_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question_id INTEGER NOT NULL,
+            pseudo TEXT,
+            reason TEXT NOT NULL,
+            comment TEXT,
+            status TEXT NOT NULL DEFAULT 'ouvert',
+            created_at TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS activity_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -186,6 +255,11 @@ def init_schema():
         conn.execute("ALTER TABLE daily_attempts ADD COLUMN answers TEXT")
         conn.commit()
 
+    # Ménage : les sessions n'expiraient jamais et s'accumulaient indéfiniment.
+    # On supprime celles de plus de 90 jours (le joueur se reconnectera).
+    conn.execute("DELETE FROM sessions WHERE created_at < date('now', '-90 days')")
+    conn.commit()
+
     conn.close()
 
 
@@ -202,6 +276,11 @@ def create_indexes():
         CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
         CREATE INDEX IF NOT EXISTS idx_activity_event ON activity_log(event);
         CREATE INDEX IF NOT EXISTS idx_daily_date ON daily_attempts(date);
+        CREATE INDEX IF NOT EXISTS idx_daily_pseudo ON daily_attempts(pseudo);
+        CREATE INDEX IF NOT EXISTS idx_enigme_date ON enigme_attempts(date);
+        CREATE INDEX IF NOT EXISTS idx_enigme_pseudo ON enigme_attempts(pseudo);
+        CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id);
+        CREATE INDEX IF NOT EXISTS idx_reports_status ON question_reports(status);
     """)
     conn.commit()
     conn.close()

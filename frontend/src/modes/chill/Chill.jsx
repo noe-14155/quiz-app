@@ -6,6 +6,7 @@ import Button from "../../components/Button";
 import AnswerGrid from "../../components/AnswerGrid";
 import QuitConfirmModal from "../../components/QuitConfirmModal";
 import SearchLink from "../../components/SearchLink";
+import ReportButton from "../../components/ReportButton";
 import QuizHeader, { QuizTopLine, QuizQuestion, Explanation } from "../../components/QuizHeader";
 import BigScore from "../../components/BigScore";
 import Pill from "../../components/Pill";
@@ -213,6 +214,7 @@ export default function Chill({ screen, onNavigate }) {
             >
               <div style={{ marginTop: 10 }}>
                 <SearchLink question={q.question} reponse={q.choix[reveal.correct_index]} />
+                <ReportButton questionId={q.id} />
               </div>
             </Explanation>
             <div style={{ height: 14 }} />

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft } from "lucide-react";
 import {
   cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, rankGradient, tint,
 } from "../../design/theme";
@@ -56,7 +55,7 @@ function PlayerRow({ player, position, isMe, onClick }) {
 }
 
 /** Écran de classement, accessible depuis le mode Classé. */
-export default function Leaderboard({ onNavigate }) {
+export default function Leaderboard({ onNavigate, sansEnTete = false }) {
   const { user } = useAuth();
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,25 +70,11 @@ export default function Leaderboard({ onNavigate }) {
 
   const maPosition = user ? players.findIndex((p) => p.pseudo === user.pseudo) + 1 : 0;
 
-  return (
-    <div style={cardWrap}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0 18px" }}>
-        <button
-          onClick={() => onNavigate("ranked-setup")}
-          aria-label="Retour"
-          style={{
-            width: 36, height: 36, borderRadius: 11, background: COLORS.soft, border: "none",
-            color: COLORS.muted2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, color: COLORS.text }}>
-          Classement
-        </h2>
-      </div>
-
-      {maPosition > 0 && (
+  // Utilisé seul (écran dédié) ou intégré dans l'onglet Classement, où l'on
+  // retire l'en-tête et le cadre pour éviter les répétitions.
+  const contenu = (
+    <>
+      {!sansEnTete && maPosition > 0 && (
         <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 16px" }}>
           Tu es <b style={{ color: COLORS.gold }}>{maPosition}<sup>{maPosition === 1 ? "er" : "e"}</sup></b> sur {players.length} joueur{players.length > 1 ? "s" : ""}.
         </p>
@@ -114,6 +99,22 @@ export default function Leaderboard({ onNavigate }) {
           </p>
         )}
       </div>
+    </>
+  );
+
+  if (sansEnTete) return contenu;
+
+  return (
+    <div style={cardWrap}>
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 26, margin: "14px 0 18px", color: COLORS.text }}>
+        Classement
+      </h2>
+      {maPosition > 0 && (
+        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 16px" }}>
+          Tu es <b style={{ color: COLORS.gold }}>{maPosition}<sup>{maPosition === 1 ? "er" : "e"}</sup></b> sur {players.length} joueur{players.length > 1 ? "s" : ""}.
+        </p>
+      )}
+      {contenu}
     </div>
   );
 }

@@ -3,7 +3,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
+import os
+
 from app.core.db import init_schema, create_indexes
+from app.core.backup import run_backup
 from app.questions.service import import_questions_from_csv
 from app.questions.router import router as questions_router
 from app.auth.router import router as auth_router
@@ -11,6 +14,9 @@ from app.modes.chill.router import router as chill_router
 from app.modes.ranked.router import router as ranked_router
 from app.modes.local.router import router as local_router
 from app.modes.daily.router import router as daily_router
+from app.modes.arcade.router import router as arcade_router
+from app.modes.duel.router import router as duel_router
+from app.modes.enigme.router import router as enigme_router
 from app.modes.admin.router import router as admin_router
 from app.modes.admin import service as admin_service
 from app.profile.router import router as profile_router
@@ -21,7 +27,10 @@ app = FastAPI(title="Quiz API")
 # (ex: allow_origins=["https://quiz.87-106-2-201.nip.io"])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Restreint aux domaines déclarés dans ALLOWED_ORIGINS (séparés par des
+    # virgules). Sans cette variable, on reste ouvert — pratique en local, à
+    # renseigner sur le VPS (ex: "https://noe.crabdance.com").
+    allow_origins=[o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "*").split(",") if o.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -46,6 +55,9 @@ async def catch_all_exceptions(request: Request, exc: Exception):
 
 @app.on_event("startup")
 def on_startup():
+    # Sauvegarde AVANT toute modification de schéma : si un redéploiement se
+    # passe mal, on a une copie de l'état d'avant.
+    run_backup()
     init_schema()  # tables persistantes (comptes, parties...) : créées si absentes, jamais supprimées
     import_questions_from_csv()  # table `questions` : recréée en entier depuis le CSV à chaque démarrage
     create_indexes()  # APRÈS l'import : recréer la table `questions` détruit ses index
@@ -71,5 +83,8 @@ app.include_router(chill_router)
 app.include_router(ranked_router)
 app.include_router(local_router)
 app.include_router(daily_router)
+app.include_router(arcade_router)
+app.include_router(duel_router)
+app.include_router(enigme_router)
 app.include_router(admin_router)
 app.include_router(profile_router)

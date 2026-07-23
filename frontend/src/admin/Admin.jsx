@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trash2, RotateCcw } from "lucide-react";
+import { Trash2, RotateCcw, KeyRound } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tint } from "../design/theme";
 import TopBar from "../components/TopBar";
 import { inputStyle } from "../components/PageTitle";
@@ -9,11 +9,17 @@ import Collapsible from "../components/Collapsible";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
+const REPORT_LABELS = {
+  reponse_fausse: "Réponse fausse",
+  explication: "Explication incorrecte",
+  ambigue: "Plusieurs réponses possibles",
+  faute: "Faute de formulation",
+  autre: "Autre",
+};
+
 const SETTINGS_LABELS = {
-  ranked_gain_low: "Classé — gain bonne réponse (rang le plus bas, Neurone)",
-  ranked_gain_high: "Classé — gain bonne réponse (rang le plus haut, Prodige)",
-  ranked_loss_low: "Classé — malus mauvaise réponse (rang le plus bas)",
-  ranked_loss_high: "Classé — malus mauvaise réponse (rang le plus haut)",
+  ranked_k_low: "Classé — amplitude en bas de classement",
+  ranked_k_high: "Classé — amplitude au sommet",
   ranked_loss_pass: "Classé — coût de passer (sous Génie uniquement)",
   ranked_daily_decay: "Classé — perte par jour (dès Génie III)",
   ranked_time_per_question: "Classé — durée par question (s)",
@@ -24,6 +30,9 @@ const MODE_LABELS = {
   mode_ranked_enabled: "Mode Classé",
   mode_local_enabled: "Mode Local",
   mode_daily_enabled: "Défi du jour",
+  mode_arcade_enabled: "Parties rapides (survie, chrono)",
+  mode_duel_enabled: "Duels",
+  mode_enigme_enabled: "Énigme du jour",
 };
 
 export default function Admin({ screen, onNavigate }) {
@@ -35,6 +44,7 @@ export default function Admin({ screen, onNavigate }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("gestion");
+  const [reports, setReports] = useState(null);
 
   async function loadAll() {
     setLoading(true);
@@ -83,6 +93,28 @@ export default function Admin({ screen, onNavigate }) {
     setSettings(updated);
   }
 
+  async function loadReports() {
+    try { setReports(await apiFetch("/api/admin/reports")); } catch (e) { setError(e.message); }
+  }
+
+  async function resolveReport(id) {
+    try {
+      await apiFetch(`/api/admin/reports/${id}/resolve`, { method: "POST" });
+      loadReports();
+    } catch (e) { setError(e.message); }
+  }
+
+  async function resetPassword(u) {
+    const mdp = window.prompt(`Nouveau mot de passe pour ${u.pseudo} (6 caractères minimum) :`);
+    if (!mdp) return;
+    try {
+      await apiFetch(`/api/admin/users/${u.id}/password`, {
+        method: "POST", body: JSON.stringify({ password: mdp }),
+      });
+      window.alert(`Mot de passe de ${u.pseudo} réinitialisé. Ses sessions ont été fermées.`);
+    } catch (e) { setError(e.message); }
+  }
+
   async function saveSettings() {
     try {
       const updated = await apiFetch("/api/admin/settings", { method: "PATCH", body: JSON.stringify(settings) });
@@ -107,8 +139,8 @@ export default function Admin({ screen, onNavigate }) {
       <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: "0 0 16px" }}>Administration</h2>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-        {[["gestion", "Gestion"], ["suivi", "Suivi"]].map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} style={{
+        {[["gestion", "Gestion"], ["suivi", "Suivi"], ["signalements", "Signalements"]].map(([id, label]) => (
+          <button key={id} onClick={() => { setTab(id); if (id === "signalements" && !reports) loadReports(); }} style={{
             flex: 1, padding: "10px 0", borderRadius: 14, cursor: "pointer", fontWeight: 800, fontSize: 13,
             fontFamily: FONT_BODY,
             border: `1.5px solid ${tab === id ? COLORS.gold : COLORS.cardAlt}`,
@@ -119,6 +151,62 @@ export default function Admin({ screen, onNavigate }) {
       </div>
 
       {tab === "suivi" && <Activity />}
+
+      {tab === "signalements" && (
+        <div>
+          {reports === null && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement…</p>}
+          {reports && reports.reports.length === 0 && (
+            <p style={{ color: COLORS.muted, fontSize: 13, textAlign: "center", padding: "24px 0" }}>
+              Aucune question signalée. Tout va bien.
+            </p>
+          )}
+          {reports && reports.reports.map((r) => (
+            <div key={r.id} style={{
+              background: COLORS.card, border: `1px solid ${COLORS.cardAlt}`,
+              borderRadius: 16, padding: 14, marginBottom: 10,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                <span style={{
+                  fontFamily: FONT_BODY, fontWeight: 800, fontSize: 10.5, letterSpacing: 1,
+                  textTransform: "uppercase", color: COLORS.danger,
+                }}>
+                  {REPORT_LABELS[r.reason] || r.reason}
+                </span>
+                <span style={{ fontSize: 11, color: COLORS.muted, flexShrink: 0 }}>
+                  #{r.question_id} · {r.pseudo || "invité"}
+                </span>
+              </div>
+              <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.text, margin: "0 0 6px" }}>
+                {r.question || "(question introuvable — CSV modifié depuis ?)"}
+              </p>
+              {r.bonne && (
+                <p style={{ fontSize: 12.5, color: COLORS.success, margin: "0 0 4px" }}>
+                  Réponse enregistrée : <b>{r.bonne}</b>
+                </p>
+              )}
+              {r.explication && (
+                <p style={{ fontSize: 12, color: COLORS.muted, margin: "0 0 6px", lineHeight: 1.45 }}>
+                  {r.explication}
+                </p>
+              )}
+              {r.comment && (
+                <p style={{ fontSize: 12.5, color: COLORS.text, margin: "0 0 8px", fontStyle: "italic" }}>
+                  « {r.comment} »
+                </p>
+              )}
+              <button
+                onClick={() => resolveReport(r.id)}
+                style={{
+                  background: COLORS.soft, border: "none", borderRadius: 12, padding: "8px 14px",
+                  fontFamily: FONT_BODY, fontWeight: 800, fontSize: 12.5, color: COLORS.text, cursor: "pointer",
+                }}
+              >
+                Marquer comme traité
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {tab === "gestion" && <>
       {loading && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement...</p>}
@@ -150,7 +238,10 @@ export default function Admin({ screen, onNavigate }) {
                 </p>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => resetUser(u.id)} aria-label="Réinitialiser" style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", padding: 6 }}>
+                <button onClick={() => resetPassword(u)} aria-label="Réinitialiser le mot de passe" title="Réinitialiser le mot de passe" style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", padding: 6 }}>
+                  <KeyRound size={16} />
+                </button>
+                <button onClick={() => resetUser(u.id)} aria-label="Remettre les scores à zéro" title="Remettre les scores à zéro" style={{ background: "none", border: "none", color: COLORS.muted, cursor: "pointer", padding: 6 }}>
                   <RotateCcw size={16} />
                 </button>
                 <button onClick={() => deleteUser(u.id)} aria-label="Supprimer" style={{ background: "none", border: "none", color: COLORS.danger, cursor: "pointer", padding: 6 }}>

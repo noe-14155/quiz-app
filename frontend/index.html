@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>SquizzYourBrain</title>
+    <meta name="theme-color" content="#7C4DFF" />
+    <meta name="description" content="Quiz de culture générale : défi du jour, mode classé, duels entre amis." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icone-192.png" />
+    <link rel="apple-touch-icon" href="/icone-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Squizz" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -22,6 +30,7 @@
       * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
       body {
+        touch-action: manipulation;
         font-family: 'Nunito', system-ui, sans-serif;
         background: #eceef4;
         display: flex;

@@ -8,6 +8,19 @@ import AnswerGrid from "../../../components/AnswerGrid";
 import QuitConfirmModal from "../../../components/QuitConfirmModal";
 import { apiFetch } from "../../../api/client";
 
+/**
+ * XP du mode local : n'est attribuée qu'au joueur dont le nom correspond
+ * exactement au compte connecté. Sur un appareil partagé, c'est la seule règle
+ * sans ambiguïté (le serveur applique la même vérification).
+ */
+function reclamerXp(playerName, difficultes) {
+  if (!playerName || !difficultes?.length) return;
+  apiFetch("/api/local/xp", {
+    method: "POST",
+    body: JSON.stringify({ player_name: playerName, difficultes }),
+  }).catch(() => { /* secondaire : jamais bloquant */ });
+}
+
 const THEMES = [
   "Cinéma/Séries", "Géographie", "Histoire", "Pays", "Acteurs/Célébrités",
   "Anecdotes", "Sciences & Nature", "Sport", "Art & Littérature", "Gastronomie", "Technologie & Internet",
@@ -120,6 +133,10 @@ export default function Mise({ screen, onNavigate }) {
     const step = questionStep + 1;
     if (step >= bidOrder.length) {
       const winner = players.find((p) => p.score >= target);
+      if (winner) {
+        // Le score d'une mise vaut sa difficulté : on en dérive l'XP à réclamer.
+        players.forEach((p) => reclamerXp(p.name, Array(Math.min(20, Math.round(p.score / 3))).fill(3)));
+      }
       if (winner) {
         setPhase("results");
         onNavigate("mise-results");

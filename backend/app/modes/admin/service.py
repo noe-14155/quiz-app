@@ -8,10 +8,8 @@ from app.profile.activity import EVENTS as EVENT_LABELS
 DEFAULT_SETTINGS = {
     # Barème du mode classé : bornes de la courbe (le code interpole entre le
     # bas et le haut du classement). Voir rank_config.py.
-    "ranked_gain_low": "25",       # gain d'une bonne réponse au rang le plus bas (Neurone)
-    "ranked_gain_high": "6",       # gain au rang le plus haut (Prodige I)
-    "ranked_loss_low": "6",        # malus d'une mauvaise réponse au plus bas
-    "ranked_loss_high": "22",      # malus au rang le plus haut (Prodige I)
+    "ranked_k_low": "24",          # amplitude des variations en bas de classement
+    "ranked_k_high": "8",          # amplitude au sommet (le score bouge moins)
     "ranked_loss_pass": "3",       # coût d'un « passer » (uniquement sous Génie, où c'est permis)
     "ranked_daily_decay": "50",    # perte quotidienne à partir de Génie III
     "ranked_time_per_question": "15",
@@ -19,9 +17,12 @@ DEFAULT_SETTINGS = {
     "mode_ranked_enabled": "1",
     "mode_local_enabled": "1",
     "mode_daily_enabled": "1",
+    "mode_arcade_enabled": "1",
+    "mode_duel_enabled": "1",
+    "mode_enigme_enabled": "1",
 }
 
-MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_daily_enabled"]
+MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_daily_enabled", "mode_arcade_enabled", "mode_duel_enabled", "mode_enigme_enabled"]
 
 
 # Cache mémoire des réglages : is_mode_enabled() est appelé sur CHAQUE requête
@@ -224,3 +225,57 @@ def get_activity(days: int = 14, feed_limit: int = 40):
         "feed": [{"event": r["event"], "label": EVENT_LABELS.get(r["event"], r["event"]), "pseudo": r["pseudo"], "created_at": r["created_at"]} for r in feed],
         "joueurs": [dict(r) for r in joueurs],
     }
+
+
+# ---------------------------------------------------------------------------
+# Signalements de questions
+# ---------------------------------------------------------------------------
+
+def list_reports(status: str = "ouvert", limit: int = 100):
+    """Signalements, enrichis du texte de la question pour pouvoir juger sans
+    ouvrir le CSV."""
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT r.id, r.question_id, r.pseudo, r.reason, r.comment, r.status, r.created_at, "
+        "       q.question, q.theme, q.difficulte, q.explication, "
+        "       q.reponse_1, q.reponse_2, q.reponse_3, q.reponse_4, q.bonne_reponse "
+        "FROM question_reports r LEFT JOIN questions q ON q.id = r.question_id "
+        "WHERE (? = 'tous' OR r.status = ?) ORDER BY r.id DESC LIMIT ?",
+        (status, status, limit),
+    ).fetchall()
+    ouverts = conn.execute("SELECT COUNT(*) c FROM question_reports WHERE status = 'ouvert'").fetchone()["c"]
+    conn.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        if d.get("bonne_reponse"):
+            d["bonne"] = d.get(f"reponse_{d['bonne_reponse']}")
+        for k in ("reponse_1", "reponse_2", "reponse_3", "reponse_4"):
+            d.pop(k, None)
+        out.append(d)
+    return {"reports": out, "ouverts": ouverts}
+
+
+def resolve_report(report_id: int):
+    """Marque un signalement comme traité."""
+    conn = get_connection()
+    conn.execute("UPDATE question_reports SET status = 'traite' WHERE id = ?", (report_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+def set_user_password(user_id: int, password: str):
+    """Réinitialise le mot de passe d'un joueur depuis l'administration.
+    Utile quand quelqu'un est bloqué (il n'y a pas d'envoi d'e-mail)."""
+    from app.auth import service as auth_service
+    conn = get_connection()
+    conn.execute(
+        "UPDATE users SET password_hash = ? WHERE id = ?",
+        (auth_service.hash_password(password), user_id),
+    )
+    # Les sessions ouvertes sont invalidées : le joueur devra se reconnecter.
+    conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}

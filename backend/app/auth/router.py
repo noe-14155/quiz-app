@@ -1,9 +1,10 @@
 from typing import Optional
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from app.auth import service
+from app.auth import rate_limit
 from app.profile.activity import log_event
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -15,7 +16,10 @@ class Credentials(BaseModel):
 
 
 @router.post("/register")
-def register(payload: Credentials):
+def register(payload: Credentials, request: Request):
+    # 5 créations de compte par minute et par adresse : large pour un usage
+    # normal, bloquant pour un script.
+    rate_limit.check(request, "register", maximum=5, fenetre=60)
     pseudo = payload.pseudo.strip()
     if len(pseudo) < 2 or len(pseudo) > 20:
         raise HTTPException(status_code=422, detail="Le pseudo doit faire entre 2 et 20 caractères")
@@ -30,10 +34,12 @@ def register(payload: Credentials):
 
 
 @router.post("/login")
-def login(payload: Credentials):
+def login(payload: Credentials, request: Request):
+    rate_limit.check(request, "login", maximum=8, fenetre=60)
     user = service.verify_login(payload.pseudo, payload.password)
     if not user:
         raise HTTPException(status_code=401, detail="Pseudo ou mot de passe incorrect")
+    rate_limit.reset("login", request)
     token = service.create_session(user["id"])
     log_event("login", user_id=user["id"], pseudo=user["pseudo"])
     return {"token": token, "pseudo": user["pseudo"]}
