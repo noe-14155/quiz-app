@@ -96,19 +96,26 @@ def finish(payload: ArcadeResult, user=Depends(get_current_user_optional)):
         return {"record": None, "nouveau_record": False, "score": payload.score}
 
     conn = get_connection()
+    # Meilleur score DU JOUR : c'est ce qui alimente le classement quotidien.
+    # Un joueur peut rejouer autant qu'il veut, seul son meilleur essai compte.
+    conn.execute(
+        "INSERT INTO arcade_daily (date, user_id, pseudo, mode, score) VALUES (date('now'),?,?,?,?) "
+        "ON CONFLICT(date, user_id, mode) DO UPDATE SET score = MAX(score, excluded.score)",
+        (user["id"], user["pseudo"], payload.mode, payload.score),
+    )
     ligne = conn.execute(
         "SELECT score FROM arcade_records WHERE user_id = ? AND mode = ?",
         (user["id"], payload.mode),
     ).fetchone()
     ancien = ligne["score"] if ligne else 0
     nouveau = payload.score > ancien
-    if nouveau:
+    if True:
         conn.execute(
             "INSERT INTO arcade_records (user_id, pseudo, mode, score, created_at) VALUES (?,?,?,?,datetime('now')) "
             "ON CONFLICT(user_id, mode) DO UPDATE SET score = excluded.score, created_at = excluded.created_at",
-            (user["id"], user["pseudo"], payload.mode, payload.score),
+            (user["id"], user["pseudo"], payload.mode, max(ancien, payload.score)),
         )
-        conn.commit()
+    conn.commit()
     conn.close()
 
     # XP proportionnelle à la performance, plafonnée pour rester secondaire
@@ -121,21 +128,38 @@ def finish(payload: ArcadeResult, user=Depends(get_current_user_optional)):
 
 @router.get("/records")
 def records(user=Depends(get_current_user_optional)):
-    """Meilleurs scores : les siens et le top général, pour chaque mode."""
+    """Pour chaque mode : le classement DU JOUR (remis à zéro chaque nuit, donc
+    accessible à tout le monde), le top de tous les temps, et ses propres
+    scores."""
     conn = get_connection()
     out = {}
     for code in MODES:
+        top_jour = conn.execute(
+            "SELECT pseudo, score FROM arcade_daily WHERE date = date('now') AND mode = ? "
+            "ORDER BY score DESC LIMIT 5",
+            (code,),
+        ).fetchall()
         top = conn.execute(
             "SELECT pseudo, score FROM arcade_records WHERE mode = ? ORDER BY score DESC LIMIT 5",
             (code,),
         ).fetchall()
-        perso = None
+        perso = perso_jour = None
         if user:
             r = conn.execute(
                 "SELECT score FROM arcade_records WHERE user_id = ? AND mode = ?",
                 (user["id"], code),
             ).fetchone()
             perso = r["score"] if r else 0
-        out[code] = {"top": [dict(t) for t in top], "perso": perso}
+            rj = conn.execute(
+                "SELECT score FROM arcade_daily WHERE date = date('now') AND user_id = ? AND mode = ?",
+                (user["id"], code),
+            ).fetchone()
+            perso_jour = rj["score"] if rj else 0
+        out[code] = {
+            "top_jour": [dict(t) for t in top_jour],
+            "top": [dict(t) for t in top],
+            "perso": perso,
+            "perso_jour": perso_jour,
+        }
     conn.close()
     return out

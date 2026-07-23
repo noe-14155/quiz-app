@@ -116,6 +116,15 @@ def init_schema():
             PRIMARY KEY (code, pseudo)
         );
 
+        CREATE TABLE IF NOT EXISTS arcade_daily (
+            date TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            pseudo TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            PRIMARY KEY (date, user_id, mode)
+        );
+
         CREATE TABLE IF NOT EXISTS arcade_records (
             user_id INTEGER NOT NULL,
             pseudo TEXT NOT NULL,
@@ -278,6 +287,7 @@ def create_indexes():
         CREATE INDEX IF NOT EXISTS idx_daily_date ON daily_attempts(date);
         CREATE INDEX IF NOT EXISTS idx_daily_pseudo ON daily_attempts(pseudo);
         CREATE INDEX IF NOT EXISTS idx_enigme_date ON enigme_attempts(date);
+        CREATE INDEX IF NOT EXISTS idx_arcade_daily ON arcade_daily(date, mode);
         CREATE INDEX IF NOT EXISTS idx_enigme_pseudo ON enigme_attempts(pseudo);
         CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id);
         CREATE INDEX IF NOT EXISTS idx_reports_status ON question_reports(status);

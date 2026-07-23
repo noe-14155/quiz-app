@@ -33,6 +33,7 @@ def _etat(user):
         "difficulte": e["difficulte"],
         "indices": e["indices"][:indices_vus],
         "indices_restants": service.NB_INDICES - indices_vus,
+        "forme": service.forme_reponse(e),
         "erreurs": t.get("erreurs", 0),
         "trouve": trouve,
         "points": t.get("points", 0),
@@ -78,8 +79,12 @@ def repondre(payload: Proposition, request: Request, user=Depends(get_current_us
         log_event("enigme_start", user_id=user["id"], pseudo=user["pseudo"])
 
     e = service.enigme_du_jour()
-    juste = service.verifier(e, payload.reponse)
-    apres = service.enregistrer_essai(user["pseudo"], user["id"], juste)
+    verdict = service.evaluer(e, payload.reponse)  # "juste" | "presque" | "faux"
+    juste = verdict == "juste"
+    # Une proposition « presque » ne coûte pas d'essai : le joueur a la bonne
+    # idée, il l'a seulement mal écrite. Le pénaliser serait injuste.
+    apres = service.enregistrer_essai(user["pseudo"], user["id"], juste) if verdict != "presque" \
+        else service.tentative(user["pseudo"])
 
     if juste:
         # L'XP suit les points obtenus, divisés pour rester cohérente avec les
@@ -87,4 +92,4 @@ def repondre(payload: Proposition, request: Request, user=Depends(get_current_us
         # difficiles en classé).
         award_xp(user["id"], max(5, (apres or {}).get("points", 0) // 4))
 
-    return {"juste": juste, **_etat(user)}
+    return {"juste": juste, "verdict": verdict, **_etat(user)}

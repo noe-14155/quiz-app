@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
-from app.auth.router import get_current_user
+from app.auth.router import get_current_user, get_current_user_optional
 from app.core.db import get_connection
 from app.questions import service as questions_service
 from app.modes.ranked import rank_config
@@ -232,7 +232,7 @@ def get_ladder(user=Depends(get_current_user)):
 
 
 @router.get("/leaderboard")
-def leaderboard(limit: int = 20):
+def leaderboard(limit: int = 5, user=Depends(get_current_user_optional)):
     """Le tri se fait directement sur le cumul de points — un seul critère,
     sans ambiguïté de palier entre deux joueurs proches."""
     cfg = get_settings()
@@ -247,4 +247,22 @@ def leaderboard(limit: int = 20):
         d = dict(r)
         d["rank_tier"] = rank_config.tier_from_points(d["rank_points"], cfg)
         result.append(d)
-    return {"leaderboard": result}
+
+    # Position du joueur, même s'il est hors du haut du tableau : sans ça, un
+    # joueur en milieu de classement ne voit jamais où il se situe.
+    moi = None
+    if user:
+        conn2 = get_connection()
+        devant = conn2.execute(
+            "SELECT COUNT(*) c FROM users WHERE rank_points > ?", (user["rank_points"],)
+        ).fetchone()["c"]
+        total = conn2.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
+        conn2.close()
+        moi = {
+            "pseudo": user["pseudo"],
+            "rank_points": user["rank_points"],
+            "position": devant + 1,
+            "total": total,
+            "dans_le_haut": (devant + 1) <= limit,
+        }
+    return {"leaderboard": result, "moi": moi}

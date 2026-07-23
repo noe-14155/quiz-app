@@ -103,17 +103,125 @@ def normaliser(texte: str) -> str:
     return " ".join(mots)
 
 
-def verifier(enigme: dict, proposition: str) -> bool:
-    """Une proposition est bonne si elle correspond à la réponse ou à l'une des
-    variantes acceptées, après normalisation."""
+def _distance(a: str, b: str) -> int:
+    """Distance de Levenshtein, pour tolérer une faute de frappe ou un accord.
+    Implémentation itérative sur une seule ligne : les chaînes sont courtes."""
+    if a == b:
+        return 0
+    if len(a) < len(b):
+        a, b = b, a
+    precedente = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        courante = [i]
+        for j, cb in enumerate(b, 1):
+            courante.append(min(
+                precedente[j] + 1,        # suppression
+                courante[j - 1] + 1,      # insertion
+                precedente[j - 1] + (ca != cb),  # substitution
+            ))
+        precedente = courante
+    return precedente[-1]
+
+
+def _contient_mot(phrase: str, mot: str) -> bool:
+    """La phrase contient-elle ce mot (ou groupe de mots) entier ?"""
+    return re.search(rf"(?:^|\s){re.escape(mot)}(?:\s|$)", phrase) is not None
+
+
+def _proche(a: str, b: str) -> bool:
+    """Tolère les petits écarts : accord, pluriel, frappe. Le seuil grandit avec
+    la longueur, pour ne pas confondre deux mots courts et différents."""
+    if not a or not b:
+        return False
+    n = max(len(a), len(b))
+    if n < 4:
+        return a == b
+    seuil = 1 if n <= 7 else 2
+    if abs(len(a) - len(b)) > seuil:
+        return False
+    return _distance(a, b) <= seuil
+
+
+# Formules qui signifient « je ne sais pas ». Sans ce filtre, « aucune idée »
+# était accepté pour les énigmes dont la réponse est « aucun » : l'expression
+# contient littéralement le mot attendu.
+ABANDONS = {
+    "je ne sais pas", "sais pas", "aucune idee", "aucune idée", "pas d idee",
+    "je sais pas", "nsp", "?", "??", "???", "je donne ma langue au chat",
+    "chais pas", "no idea", "sais po", "j abandonne",
+}
+
+
+def evaluer(enigme: dict, proposition: str) -> str:
+    """Compare une proposition à la réponse attendue.
+
+    Renvoie "juste", "presque" ou "faux". Le mode "presque" évite l'impasse la
+    plus frustrante du texte libre : avoir la bonne idée, l'écrire autrement, et
+    ne recevoir aucun signal.
+
+    Trois niveaux de tolérance, du plus strict au plus souple :
+      1. égalité après normalisation ;
+      2. la réponse attendue apparaît comme mot entier dans la proposition
+         (« je pense que ce sont des triplés » contient « triplés ») ;
+      3. écart de frappe ou d'accord (« triplé » pour « triplés »).
+    """
     if not proposition or not proposition.strip():
-        return False
+        return "faux"
     p = normaliser(proposition)
-    if not p:
-        return False
-    attendues = {normaliser(enigme["reponse"])} | {normaliser(a) for a in enigme["alternatives"]}
-    attendues.discard("")
-    return p in attendues
+    if not p or p in ABANDONS:
+        return "faux"
+
+    attendues = [normaliser(enigme["reponse"])] + [normaliser(a) for a in enigme["alternatives"]]
+    attendues = [a for a in attendues if a]
+    # Le « noyau » : la réponse sans ses mots outils, ce qui porte le sens.
+    noyaux = {a.split()[-1] for a in attendues if a}
+
+    for att in attendues:
+        if p == att:
+            return "juste"
+        # La réponse attendue est contenue dans la proposition, ou l'inverse.
+        if len(att) >= 3 and _contient_mot(p, att):
+            return "juste"
+        if len(p) >= 3 and _contient_mot(att, p):
+            return "juste"
+        if _proche(p, att):
+            return "juste"
+
+    # Le mot porteur seul suffit : « triplé » pour « ce sont des triplés ».
+    for mot in p.split():
+        for noyau in noyaux:
+            if len(noyau) >= 4 and (mot == noyau or _proche(mot, noyau)):
+                return "juste"
+
+    # Proche sans être juste : on le signale pour ne pas laisser le joueur
+    # croire que sa réponse n'a pas été comprise.
+    for att in attendues:
+        n = max(len(p), len(att))
+        if n >= 5 and _distance(p, att) <= max(2, n // 4):
+            return "presque"
+    return "faux"
+
+
+def verifier(enigme: dict, proposition: str) -> bool:
+    """Conservé pour les appels existants : une proposition « juste » seulement."""
+    return evaluer(enigme, proposition) == "juste"
+
+
+def forme_reponse(enigme: dict) -> dict:
+    """Longueur de la réponse attendue, affichée au joueur.
+
+    Sans ce repère, le texte libre est décourageant : on ne sait pas si l'on
+    cherche un mot ou une phrase. C'est un guide, pas un indice — il ne révèle
+    rien du contenu.
+    """
+    # On annonce la forme LA PLUS COURTE acceptée : « triplés » plutôt que
+    # « ce sont des triplés », sinon on pousse le joueur vers une phrase alors
+    # qu'un mot suffit.
+    formes = [normaliser(enigme["reponse"])] + [normaliser(a) for a in enigme["alternatives"]]
+    formes = [f for f in formes if f and len(f) >= 3]
+    courte = min(formes, key=len) if formes else normaliser(enigme["reponse"])
+    mots = courte.split()
+    return {"mots": len(mots), "lettres": [len(m) for m in mots]}
 
 
 def points(indices_utilises: int, erreurs: int) -> int:
