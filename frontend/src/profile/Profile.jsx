@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, Sparkles, ChevronRight, Sun, Moon, Award, Lock } from "lucide-react";
+import { LogOut, Sparkles, ChevronRight, Sun, Moon } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, gradient, rankGradient, sectionLabel, tint, ACCENT_OPTIONS } from "../design/theme";
 import { useThemeSettings } from "../design/ThemeContext";
 import { FEEDBACK, setFeedback } from "../design/feedback";
@@ -171,51 +171,26 @@ export function Profile({ screen, onNavigate }) {
 
       <div style={{ height: 24 }} />
 
-      {user.achievements && (
-        <>
-          <p style={{ ...sectionLabel, margin: "6px 0 10px" }}>
-            Succès <span style={{ color: COLORS.gold }}>
-              {user.achievements.filter((a) => a.unlocked).length}/{user.achievements.length}
-            </span>
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 18 }}>
-            {user.achievements.map((a) => (
-              <div
-                key={a.code}
-                style={{
-                  display: "flex", alignItems: "center", gap: 11, padding: "10px 13px", borderRadius: 14,
-                  background: a.unlocked ? tint(COLORS.gold, 8) : COLORS.card,
-                  border: `1px solid ${a.unlocked ? COLORS.gold : COLORS.cardAlt}`,
-                  opacity: a.unlocked ? 1 : 0.55,
-                }}
-              >
-                <span style={{
-                  width: 30, height: 30, borderRadius: 10, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: a.unlocked ? gradient(135) : COLORS.soft,
-                }}>
-                  {a.unlocked
-                    ? <Award size={15} color="#fff" />
-                    : <Lock size={13} color={COLORS.muted} />}
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <b style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.text }}>
-                    {a.titre}
-                  </b>
-                  <small style={{ fontFamily: FONT_BODY, fontSize: 11.5, color: COLORS.muted }}>
-                    {a.description}
-                  </small>
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <Section title="Progression">
+        <Row
+          label="Succès"
+          sub={user.achievements
+            ? `${user.achievements.filter((a) => a.unlocked).length} sur ${user.achievements.length} obtenus`
+            : "À découvrir en jouant"}
+          onClick={() => onNavigate("succes")}
+        >
+          <ChevronRight size={18} color={COLORS.chevron} />
+        </Row>
+        <Row label="Statistiques détaillées" sub="Progression, régularité, thèmes forts et faibles" last
+             onClick={() => onNavigate("stats")}>
+          <ChevronRight size={18} color={COLORS.chevron} />
+        </Row>
+      </Section>
 
       <Section title="Apparence" pad="14px 16px">
         <p style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 14, color: COLORS.text, margin: "0 0 10px" }}>Thème</p>
         <div style={{ display: "flex", gap: 8 }}>
-          {[["light", "Clair", Sun], ["dark", "Sombre", Moon]].map(([id, label, Icon]) => (
+          {[["light", "Clair", Sun], ["dark", "Sombre", Moon]].map(([id, label, Icone]) => (
             <button
               key={id}
               onClick={() => setMode(id)}
@@ -228,7 +203,7 @@ export function Profile({ screen, onNavigate }) {
                 fontFamily: FONT_BODY, fontWeight: 800, fontSize: 13,
               }}
             >
-              <Icon size={15} /> {label}
+              <Icone size={15} /> {label}
             </button>
           ))}
         </div>
@@ -250,13 +225,6 @@ export function Profile({ screen, onNavigate }) {
             />
           ))}
         </div>
-      </Section>
-
-      <Section title="Analyse">
-        <Row label="Statistiques détaillées" sub="Progression, régularité, thèmes forts et faibles" last
-             onClick={() => onNavigate("stats")}>
-          <ChevronRight size={18} color={COLORS.chevron} />
-        </Row>
       </Section>
 
       <Section title="Sensations" pad="4px 16px">

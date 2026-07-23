@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { SkipForward, Check, X } from "lucide-react";
+import { SkipForward } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, tint, rankGradient, RANKS } from "../../design/theme";
 import TopBar from "../../components/TopBar";
 import Button from "../../components/Button";
@@ -11,6 +11,7 @@ import QuizHeader, { QuizTopLine, QuizQuestion, Explanation } from "../../compon
 import BigScore from "../../components/BigScore";
 import PageTitle from "../../components/PageTitle";
 import Collapsible from "../../components/Collapsible";
+import RankLadder from "../../components/RankLadder";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 
@@ -54,12 +55,16 @@ export default function Ranked({ screen, onNavigate }) {
   const [answered, setAnswered] = useState(null);
   const [reveal, setReveal] = useState(null);
   const [rules, setRules] = useState(null);
+  const [ladder, setLadder] = useState(null);
   const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME_PER_QUESTION);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [quitOpen, setQuitOpen] = useState(false);
   // Nombre de bonnes réponses de la partie, pour l'écran de résultats.
   const [correctCount, setCorrectCount] = useState(0);
+  // Somme des points gagnés/perdus sur la partie : c'est le bilan que le
+  // joueur attend, maintenant que le barème n'est plus affiché à l'avance.
+  const [deltaTotal, setDeltaTotal] = useState(null);
   const timerRef = useRef(null);
   const tpq = rules?.time_per_question || DEFAULT_TIME_PER_QUESTION;
 
@@ -67,6 +72,8 @@ export default function Ranked({ screen, onNavigate }) {
   useEffect(() => {
     if (screen !== "ranked-setup" || !user) return;
     apiFetch("/api/ranked/rules").then(setRules).catch(() => {});
+    // L'échelle des rangs se consulte ici (elle a quitté l'onglet Classement).
+    apiFetch("/api/ranked/ladder").then(setLadder).catch(() => {});
   }, [screen, user]);
 
   useEffect(() => {
@@ -96,6 +103,7 @@ export default function Ranked({ screen, onNavigate }) {
       setPartyId(result.party_id);
       setPool(result.questions);
       setCorrectCount(0);
+      setDeltaTotal(null);
       setIndex(0);
       setAnswered(null);
       setReveal(null);
@@ -120,6 +128,7 @@ export default function Ranked({ screen, onNavigate }) {
       });
       setReveal(result);
       if (result.correct) setCorrectCount((n) => n + 1);
+      setDeltaTotal((d) => (d ?? 0) + result.delta_points);
       await refreshProfile();
     } catch (e) {
       setError(e.message);
@@ -179,71 +188,35 @@ export default function Ranked({ screen, onNavigate }) {
         </div>
       )}
       {user && <RankBadge tier={user.rank_tier} points={user.rank_points} progress={user.rank_progress} />}
-        <div style={{
-          background: COLORS.card, border: `1px solid ${COLORS.cardAlt}`, borderRadius: 18,
-          padding: 16, margin: "18px 0",
-        }}>
-          {[
-            [`${rules?.nb_questions || 10} questions`, `${tpq}s chacune`, COLORS.muted],
-            ["Bonne réponse", `+${rules?.gain_if_correct ?? "…"} pts`, COLORS.success],
-            ["Mauvaise réponse", `−${rules?.loss_if_wrong ?? "…"} pts`, COLORS.danger],
-            rules?.can_pass !== false
-              ? ["Passer une question", `−${rules?.loss_if_pass ?? "…"} pts`, COLORS.muted]
-              : ["Passer une question", "Interdit à ton rang", COLORS.danger],
-          ].map(([label, value, color], i) => (
-            <div key={i} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "9px 0", borderBottom: i < 3 ? `1px solid ${COLORS.cardAlt}` : "none",
-              fontFamily: FONT_BODY, fontWeight: 800, fontSize: 13.5, color: COLORS.text,
-            }}>
-              <span>{label}</span>
-              <span style={{ color }}>{value}</span>
-            </div>
-          ))}
-        </div>
-
-        {rules?.scale && (
-          <div style={{ marginBottom: 20 }}>
-            <Collapsible title="Barème par rang">
-              <div style={{ background: COLORS.card, borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", padding: "8px 12px", fontSize: 11, fontWeight: 700, color: COLORS.muted, borderBottom: `1px solid ${COLORS.cardAlt}` }}>
-                  <span>Rang</span>
-                  <span style={{ textAlign: "right", color: COLORS.success }}>Bonne</span>
-                  <span style={{ textAlign: "right", color: COLORS.danger }}>Mauvaise</span>
-                  <span style={{ textAlign: "center" }}>Passer</span>
-                </div>
-                {rules.scale.map((row) => {
-                  const isCurrent = rules.current_rank ? row.rank === rules.current_rank : false;
-                  return (
-                    <div key={row.rank} style={{
-                      display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", padding: "7px 12px", fontSize: 12,
-                      borderBottom: `1px solid ${COLORS.cardAlt}`,
-                      background: isCurrent ? tint(COLORS.gold, 10) : "transparent",
-                    }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 800, color: COLORS.text }}>
-                        <span style={{
-                          width: 9, height: 9, borderRadius: 3, flexShrink: 0,
-                          background: rankGradient(RANKS.find((r) => r.name === row.rank) || RANKS[0]),
-                        }} />
-                        {row.rank}
-                      </span>
-                      <span style={{ textAlign: "right", color: COLORS.success, fontWeight: 700 }}>+{row.gain}</span>
-                      <span style={{ textAlign: "right", color: COLORS.danger, fontWeight: 700 }}>−{row.loss}</span>
-                      <span style={{ display: "flex", justifyContent: "center", color: row.can_pass ? COLORS.muted : COLORS.danger }}>
-                        {row.can_pass ? <Check size={14} /> : <X size={14} />}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p style={{ fontSize: 11, color: COLORS.muted, margin: "8px 2px 0", lineHeight: 1.5 }}>
-                Plus tu montes, moins tu gagnes et plus tu perds. Passer devient impossible à partir de Génie.
-                {rules.daily_decay ? ` À partir de Génie III, tu perds ${rules.daily_decay} points par jour d'inactivité (sans jamais retomber sous Génie).` : ""}
-              </p>
+        {/* Progression + échelle : c'est ici que le rang se consulte désormais,
+            le classement general n'affichant plus que le haut du tableau. */}
+        {ladder && (
+          <div style={{ marginTop: 18 }}>
+            <Collapsible title="L'échelle des rangs">
+              <RankLadder ladder={ladder.ladder} ranks={RANKS} />
+              {ladder.next && (
+                <p style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 12, lineHeight: 1.5 }}>
+                  Plus que {ladder.next.remaining.toLocaleString("fr-FR")} points avant {ladder.next.rank}.
+                </p>
+              )}
             </Collapsible>
           </div>
         )}
-        {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
+
+        <div style={{
+          background: COLORS.card, border: `1px solid ${COLORS.cardAlt}`, borderRadius: 18,
+          padding: 16, margin: "6px 0 18px",
+        }}>
+          <p style={{ fontFamily: FONT_BODY, fontWeight: 800, fontSize: 13.5, color: COLORS.text, margin: 0 }}>
+            {rules?.nb_questions || 10} questions · {tpq} secondes chacune
+          </p>
+          <p style={{ fontSize: 12.5, color: COLORS.muted, margin: "7px 0 0", lineHeight: 1.5 }}>
+            Ce que rapporte une réponse dépend de la difficulté de la question et de ton niveau :
+            réussir au-dessus de ton rang paie beaucoup, se tromper en dessous coûte cher.
+            {rules?.can_pass === false ? " Passer une question n'est plus autorisé à ton rang." : ""}
+          </p>
+        </div>
+
         <Button onClick={start} disabled={loading}>
           {loading ? "Chargement..." : "Lancer une partie classée"}
         </Button>
@@ -266,15 +239,7 @@ export default function Ranked({ screen, onNavigate }) {
           rightLabel={`${timeLeft}s`}
           rightDanger={timeLeft <= 5}
           progressPct={Math.max(0, timePct)}
-          tags={[
-            { label: q.theme, color: COLORS.gold },
-            {
-              label: rules
-                ? `+${rules.gain_if_correct} / −${rules.loss_if_wrong}`
-                : `Niveau ${q.difficulte}`,
-              color: COLORS.accent3,
-            },
-          ]}
+          tags={[{ label: q.theme, color: COLORS.gold }]}
         />
         <QuizQuestion>{q.question}</QuizQuestion>
 
@@ -290,7 +255,7 @@ export default function Ranked({ screen, onNavigate }) {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}
           >
-            <SkipForward size={14} /> Passer{rules?.loss_if_pass ? ` (−${rules.loss_if_pass} pts)` : ""}
+            <SkipForward size={14} /> Passer
           </button>
         )}
 
@@ -324,7 +289,9 @@ export default function Ranked({ screen, onNavigate }) {
         score={correctCount}
         total={pool.length}
         label="Partie classée"
-        subtitle={user ? `${user.rank_points} points au total` : null}
+        subtitle={deltaTotal !== null
+          ? `${deltaTotal >= 0 ? "+" : ""}${deltaTotal} points${user ? ` · ${user.rank_points.toLocaleString("fr-FR")} au total` : ""}`
+          : (user ? `${user.rank_points.toLocaleString("fr-FR")} points au total` : null)}
       />
       {newAchievements.length > 0 && (
         <div style={{

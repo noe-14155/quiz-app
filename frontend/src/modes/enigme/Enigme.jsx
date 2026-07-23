@@ -18,6 +18,7 @@ export default function Enigme({ onNavigate }) {
   const [data, setData] = useState(null);
   const [saisie, setSaisie] = useState("");
   const [rate, setRate] = useState(false);      // secousse après une erreur
+  const [presque, setPresque] = useState(false); // bonne idée, mauvaise écriture
   const [erreur, setErreur] = useState(null);
   const [envoi, setEnvoi] = useState(false);
   const champ = useRef(null);
@@ -37,9 +38,16 @@ export default function Enigme({ onNavigate }) {
       });
       setData(r);
       if (r.juste) {
+        setPresque(false);
         feedbackFin(true);
         setSaisie("");
+      } else if (r.verdict === "presque") {
+        // Bonne idée mal orthographiée : on le dit, et l'essai n'est pas compté.
+        setPresque(true);
+        feedbackBon();
+        champ.current?.focus();
       } else {
+        setPresque(false);
         feedbackMauvais();
         setRate(true);
         setTimeout(() => setRate(false), 450);
@@ -176,12 +184,25 @@ export default function Enigme({ onNavigate }) {
             </button>
           </div>
 
+          {presque && (
+            <p style={{
+              display: "flex", alignItems: "center", gap: 7, margin: "0 0 10px",
+              fontFamily: FONT_BODY, fontWeight: 800, fontSize: 13, color: COLORS.accent3,
+            }}>
+              <Lightbulb size={14} /> Tu y es presque — vérifie l'orthographe.
+            </p>
+          )}
+
           <div style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
             fontFamily: FONT_BODY, fontSize: 12, color: COLORS.muted, marginBottom: 18,
           }}>
             <span>
-              {data.erreurs > 0 ? `${data.erreurs} tentative${data.erreurs > 1 ? "s" : ""}` : "Aucune tentative"}
+              {data.forme
+                ? data.forme.mots === 1
+                  ? `Réponse en 1 mot de ${data.forme.lettres[0]} lettres`
+                  : `Réponse en ${data.forme.mots} mots`
+                : ""}
             </span>
             <span style={{ fontWeight: 800, color: COLORS.gold }}>
               {data.points_possibles} points en jeu

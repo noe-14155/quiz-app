@@ -6,6 +6,7 @@ import {
 import AnswerGrid from "../../components/AnswerGrid";
 import Button from "../../components/Button";
 import { apiFetch } from "../../api/client";
+import { useAuth } from "../../auth/AuthContext";
 import { feedbackBon, feedbackMauvais, feedbackFin, feedbackUrgence } from "../../design/feedback";
 
 const CHRONO_DUREE = 60;
@@ -19,6 +20,7 @@ const CHRONO_DUREE = 60;
  * vienne casser le rythme — ce qui serait fatal au chronomètre.
  */
 export default function Arcade({ screen, onNavigate }) {
+  const { user } = useAuth();
   const mode = screen === "survie" ? "survie" : "chrono";
   const [phase, setPhase] = useState("intro");
   const [pool, setPool] = useState([]);
@@ -110,6 +112,51 @@ export default function Arcade({ screen, onNavigate }) {
     }, bon ? 380 : 700);
   }
 
+
+  /** Classement du jour : remis à zéro chaque nuit, donc à la portée de tous. */
+  function TopDuJour() {
+    const jour = records?.[mode]?.top_jour || [];
+    return (
+      <>
+        <p style={sectionLabel}>Meilleurs scores du jour</p>
+        {jour.length === 0 ? (
+          <p style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.5 }}>
+            Personne n'a encore joué aujourd'hui. Le premier score prend la tête.
+          </p>
+        ) : (
+          jour.map((t, i) => {
+            const moi = user && t.pseudo === user.pseudo;
+            const medaille = ["#FFC94D", "#C3CBD3", "#D9A066"][i];
+            return (
+              <div key={t.pseudo} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 14,
+                background: moi ? tint(COLORS.gold, 8) : "transparent",
+                border: `1px solid ${moi ? COLORS.gold : "transparent"}`,
+                borderBottom: !moi && i < jour.length - 1 ? `1px solid ${COLORS.cardAlt}` : undefined,
+              }}>
+                <span style={{
+                  width: 26, height: 26, borderRadius: 9, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: i < 3 ? medaille : "transparent",
+                  color: i < 3 ? "#fff" : COLORS.muted,
+                  fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 13,
+                }}>
+                  {i + 1}
+                </span>
+                <span style={{ flex: 1, fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, color: COLORS.text }}>
+                  {t.pseudo}{moi ? <span style={{ color: COLORS.gold }}> (toi)</span> : null}
+                </span>
+                <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, color: COLORS.text }}>
+                  {t.score}
+                </span>
+              </div>
+            );
+          })
+        )}
+      </>
+    );
+  }
+
   const titre = mode === "survie" ? "Survie" : "Contre-la-montre";
   const Icone = mode === "survie" ? Flame : Timer;
   const perso = records?.[mode]?.perso;
@@ -150,27 +197,7 @@ export default function Arcade({ screen, onNavigate }) {
         {erreur && <p style={{ color: COLORS.danger, fontSize: 13, marginBottom: 12 }}>{erreur}</p>}
         <Button onClick={demarrer}>Commencer</Button>
 
-        {records?.[mode]?.top?.length > 0 && (
-          <>
-            <p style={sectionLabel}>Meilleurs scores</p>
-            {records[mode].top.map((t, i) => (
-              <div key={t.pseudo} style={{
-                display: "flex", alignItems: "center", gap: 12, padding: "9px 12px",
-                borderBottom: `1px solid ${COLORS.cardAlt}`,
-              }}>
-                <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 13, color: COLORS.muted, width: 20 }}>
-                  {i + 1}
-                </span>
-                <span style={{ flex: 1, fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.text }}>
-                  {t.pseudo}
-                </span>
-                <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.gold }}>
-                  {t.score}
-                </span>
-              </div>
-            ))}
-          </>
-        )}
+        <TopDuJour />
       </div>
     );
   }
@@ -202,6 +229,7 @@ export default function Arcade({ screen, onNavigate }) {
         <Button onClick={demarrer}>Rejouer</Button>
         <div style={{ height: 10 }} />
         <Button variant="secondary" onClick={() => onNavigate("home")}>Accueil</Button>
+        <TopDuJour />
       </div>
     );
   }

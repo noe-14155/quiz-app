@@ -8,7 +8,6 @@ import Login from "./Login";
 import Chill from "./modes/chill/Chill";
 import Ranked from "./modes/ranked/Ranked";
 import Ranks from "./modes/ranked/Ranks";
-import Leaderboard from "./modes/ranked/Leaderboard";
 import LocalChoice from "./modes/local/LocalChoice";
 import Mise from "./modes/local/games/Mise";
 import QuestionsMode from "./modes/local/games/QuestionsMode";
@@ -19,6 +18,7 @@ import Duel from "./modes/duel/Duel";
 import Enigme from "./modes/enigme/Enigme";
 import { Profile, PublicProfile } from "./profile/Profile";
 import Stats from "./profile/Stats";
+import Achievements from "./profile/Achievements";
 import Admin from "./admin/Admin";
 
 function Router() {
@@ -69,7 +69,6 @@ function Router() {
   if (screen.startsWith("chill-")) return <Chill screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("ranked-")) return <Ranked screen={screen} onNavigate={navigate} />;
   if (screen === "ranks") return <Ranks onNavigate={navigateWithArg} />;
-  if (screen === "leaderboard") return <Leaderboard onNavigate={navigateWithArg} />;
 
   if (screen === "local-choice") return <LocalChoice screen={screen} onNavigate={navigate} />;
   if (screen === "daily") return <Daily screen={screen} onNavigate={navigate} />;
@@ -82,6 +81,7 @@ function Router() {
 
   if (screen === "profile") return <Profile screen={screen} onNavigate={navigate} />;
   if (screen === "stats") return <Stats onNavigate={navigate} />;
+  if (screen === "succes") return <Achievements onNavigate={navigate} />;
   if (screen === "public-profile") return <PublicProfile screen={screen} onNavigate={navigate} pseudo={viewedPseudo} />;
   if (screen === "admin") return <Admin screen={screen} onNavigate={navigate} />;
 
