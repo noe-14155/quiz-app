@@ -7,6 +7,7 @@ from app.modes.ranked import rank_config
 from app.modes.admin.service import get_settings
 from app.modes.ranked.decay import apply_daily_decay
 from app.profile import stats
+from app.profile.avatars import NB_VISAGES, COULEURS_AVATAR
 from app.profile import achievements
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
@@ -29,13 +30,6 @@ def _build_profile(user: dict):
         "avatar_face": user["avatar_face"] if "avatar_face" in user.keys() else 0,
         "avatar_color": user["avatar_color"] if "avatar_color" in user.keys() else "#7C4DFF",
     }
-
-
-NB_VISAGES = 8
-COULEURS_AVATAR = [
-    "#7C4DFF", "#FF4D9D", "#FF8A3D", "#12B981",
-    "#38BDF8", "#F43F5E", "#FFC94D", "#8A93A5",
-]
 
 
 class AvatarPayload(BaseModel):

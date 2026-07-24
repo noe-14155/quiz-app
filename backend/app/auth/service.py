@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 
 import bcrypt
 
+from app.profile.avatars import avatar_aleatoire
+
 from app.core.db import get_connection
 
 
@@ -22,8 +24,10 @@ def create_user(pseudo: str, password: str):
         conn.close()
         return None
     cur.execute(
-        "INSERT INTO users (pseudo, password_hash, xp_total, rank_tier, rank_points, created_at) VALUES (?,?,?,?,?,?)",
-        (pseudo, hash_password(password), 0, 0, 0, datetime.now(timezone.utc).isoformat()),
+        "INSERT INTO users (pseudo, password_hash, xp_total, rank_tier, rank_points, created_at, "
+        "                   avatar_face, avatar_color) VALUES (?,?,?,?,?,?,?,?)",
+        (pseudo, hash_password(password), 0, 0, 0, datetime.now(timezone.utc).isoformat(),
+         *avatar_aleatoire()),
     )
     conn.commit()
     user_id = cur.lastrowid

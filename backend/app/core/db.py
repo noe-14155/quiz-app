@@ -275,6 +275,16 @@ def init_schema():
         conn.commit()
     if "avatar_color" not in existing_columns:
         conn.execute("ALTER TABLE users ADD COLUMN avatar_color TEXT NOT NULL DEFAULT '#7C4DFF'")
+        # On tire un avatar au hasard pour CHAQUE joueur existant : si tout le
+        # monde démarrait avec le même visage violet, le classement serait une
+        # colonne de pastilles identiques et l'avatar ne servirait à rien.
+        import random
+        from app.profile.avatars import NB_VISAGES, COULEURS_AVATAR
+        for row in conn.execute("SELECT id FROM users").fetchall():
+            conn.execute(
+                "UPDATE users SET avatar_face = ?, avatar_color = ? WHERE id = ?",
+                (random.randrange(NB_VISAGES), random.choice(COULEURS_AVATAR), row["id"]),
+            )
         conn.commit()
 
     # Migration : sommet atteint pendant la saison en cours, et meilleur rang
