@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import TimerBar from "./TimerBar";
 import { COLORS, FONT_DISPLAY, FONT_BODY, gradient, gradientText, tint } from "../design/theme";
 
 /**
@@ -6,7 +7,7 @@ import { COLORS, FONT_DISPLAY, FONT_BODY, gradient, gradientText, tint } from ".
  * journalier) : gros numéro en dégradé, indicateur de droite (chrono ou score),
  * barre de progression et étiquettes (thème, difficulté, enjeu).
  */
-export default function QuizHeader({ index, total, rightLabel, rightDanger = false, progressPct, tags = [] }) {
+export default function QuizHeader({ index, total, rightLabel, rightDanger = false, progressPct, tags = [], chrono }) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", margin: "0 0 8px" }}>
@@ -23,12 +24,20 @@ export default function QuizHeader({ index, total, rightLabel, rightDanger = fal
         )}
       </div>
 
-      <div style={{ height: 9, borderRadius: 6, background: COLORS.cardAlt, marginBottom: 20, overflow: "hidden" }}>
-        <div style={{
-          height: "100%", borderRadius: 6, width: `${Math.max(0, Math.min(100, progressPct))}%`,
-          background: gradient(90), transition: "width .25s linear",
-        }} />
-      </div>
+      {/* Quand la durée est connue (chrono d'une question, contre-la-montre),
+          on confie l'animation au CSS : elle est alors parfaitement fluide.
+          Sinon, simple barre de progression pilotée par la valeur. */}
+      {chrono ? (
+        <TimerBar duree={chrono.duree} cle={chrono.cle} danger={rightDanger}
+                  hauteur={9} style={{ marginBottom: 20 }} />
+      ) : (
+        <div style={{ height: 9, borderRadius: 6, background: COLORS.cardAlt, marginBottom: 20, overflow: "hidden" }}>
+          <div style={{
+            height: "100%", borderRadius: 6, width: `${Math.max(0, Math.min(100, progressPct))}%`,
+            background: gradient(90), transition: "width .25s linear",
+          }} />
+        </div>
+      )}
 
       {tags.length > 0 && (
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 12 }}>

@@ -14,7 +14,7 @@ import QuestionsMode from "./modes/local/games/QuestionsMode";
 import Daily from "./modes/daily/Daily";
 import Jouer from "./modes/jouer/Jouer";
 import Arcade from "./modes/arcade/Arcade";
-import Duel from "./modes/duel/Duel";
+import Multi from "./modes/multi/Multi";
 import Enigme from "./modes/enigme/Enigme";
 import { Profile } from "./profile/Profile";
 import PublicProfile from "./profile/PublicProfile";
@@ -97,7 +97,7 @@ function Router() {
   if (screen === "local-choice") return <LocalChoice screen={screen} onNavigate={navigate} />;
   if (screen === "daily") return <Daily screen={screen} onNavigate={navigate} />;
   if (screen === "survie" || screen === "chrono") return <Arcade screen={screen} onNavigate={navigate} />;
-  if (screen === "duel") return <Duel onNavigate={navigate} />;
+  if (screen === "multi") return <Multi onNavigate={navigate} />;
   if (screen === "enigme") return <Enigme onNavigate={navigate} />;
   if (screen.startsWith("mise-")) return <Mise screen={screen} onNavigate={navigate} />;
   if (screen.startsWith("questions-mode-")) return <QuestionsMode screen={screen} onNavigate={navigate} />;

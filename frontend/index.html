@@ -20,6 +20,13 @@
     />
     <style>
       /* Animations partagées, référencées depuis les styles en ligne des composants. */
+      /* Compte à rebours : une seule animation, traitée par le compositeur.
+         Animer la largeur obligeait le navigateur à recalculer la mise en page
+         soixante fois par seconde — d'où le saccadement. */
+      @keyframes sqdrain {
+        from { transform: scaleX(1); }
+        to   { transform: scaleX(0); }
+      }
       @keyframes sqgrad { 0% { background-position: 0% 50% } 100% { background-position: 300% 50% } }
       @keyframes sqrise { 0% { transform: translateY(16px); opacity: 0 } 100% { transform: translateY(0); opacity: 1 } }
       @keyframes sqpop { 0% { transform: scale(.7); opacity: 0 } 70% { transform: scale(1.07) } 100% { transform: scale(1); opacity: 1 } }

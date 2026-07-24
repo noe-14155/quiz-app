@@ -4,6 +4,7 @@ import {
   cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, gradient, gradientText, sectionLabel, tint,
 } from "../../design/theme";
 import AnswerGrid from "../../components/AnswerGrid";
+import TimerBar from "../../components/TimerBar";
 import Button from "../../components/Button";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
@@ -30,6 +31,8 @@ export default function Arcade({ screen, onNavigate }) {
   const [temps, setTemps] = useState(CHRONO_DUREE);
   const [records, setRecords] = useState(null);
   const [resultat, setResultat] = useState(null);
+  // Incrémenté à chaque partie : relance l'animation du chrono.
+  const [manche, setManche] = useState(0);
   const [erreur, setErreur] = useState(null);
   const finRef = useRef(() => {});
 
@@ -63,6 +66,7 @@ export default function Arcade({ screen, onNavigate }) {
       setPool(r.questions);
       setIndex(0); setScore(0); setAnswered(null);
       setTemps(CHRONO_DUREE);
+      setManche((n) => n + 1);
       setPhase("jeu");
     } catch (e) { setErreur(e.message); }
   }
@@ -263,12 +267,8 @@ export default function Arcade({ screen, onNavigate }) {
       </div>
 
       {mode === "chrono" && (
-        <div style={{ height: 8, borderRadius: 5, background: COLORS.cardAlt, marginBottom: 18, overflow: "hidden" }}>
-          <div style={{
-            height: "100%", width: `${(temps / CHRONO_DUREE) * 100}%`,
-            background: temps <= 10 ? COLORS.danger : gradient(90), transition: "width 1s linear",
-          }} />
-        </div>
+        <TimerBar duree={CHRONO_DUREE} cle={`manche-${manche}`}
+                  danger={temps <= 10} style={{ marginBottom: 18 }} />
       )}
 
       <div style={{ display: "flex", gap: 7, marginBottom: 12 }}>

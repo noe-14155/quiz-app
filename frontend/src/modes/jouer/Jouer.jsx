@@ -77,7 +77,7 @@ export default function Jouer({ onNavigate }) {
   const { user } = useAuth();
   const [modes, setModes] = useState({
     mode_chill_enabled: true, mode_ranked_enabled: true, mode_local_enabled: true,
-    mode_daily_enabled: true, mode_arcade_enabled: true, mode_duel_enabled: true,
+    mode_daily_enabled: true, mode_arcade_enabled: true, mode_multi_enabled: true,
     mode_enigme_enabled: true,
   });
   const [defi, setDefi] = useState(null);
@@ -154,9 +154,9 @@ export default function Jouer({ onNavigate }) {
       )}
       <p style={sectionLabel}>À plusieurs</p>
       <Mode
-        Icone={Swords} couleur="#3B82F6" titre="Duel" accroche="Défie un ami, chacun joue quand il veut"
-        actif={modes.mode_duel_enabled}
-        onClick={() => onNavigate(user ? "duel" : "login")}
+        Icone={Swords} couleur="#3B82F6" titre="Multi" accroche="Tous en même temps, le plus rapide marque le plus"
+        actif={modes.mode_multi_enabled}
+        onClick={() => onNavigate(user ? "multi" : "login")}
       />
       <Mode
         Icone={Users} couleur={COLORS.shapeB} titre="Local" accroche="Entre potes, sur un seul écran"

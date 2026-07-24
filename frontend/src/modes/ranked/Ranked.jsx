@@ -254,6 +254,8 @@ export default function Ranked({ screen, onNavigate }) {
           total={pool.length}
           rightLabel={`${timeLeft}s`}
           rightDanger={timeLeft <= 5}
+          // La clé change à chaque question : l'animation repart de zéro.
+          chrono={answered === null ? { duree: tpq, cle: `q${index}` } : undefined}
           progressPct={Math.max(0, timePct)}
           tags={[
             { label: q.theme, color: COLORS.gold },

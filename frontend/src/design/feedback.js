@@ -75,8 +75,14 @@ export function feedbackFin(reussi = true) {
   bip(reussi ? [523, 659, 784, 1047] : [400, 300], 0.11);
 }
 
-/** Compte à rebours qui s'emballe (5 dernières secondes). */
+/** Compte à rebours qui s'emballe (5 dernières secondes).
+ *
+ *  Différé d'une image : créer un oscillateur et déclencher une vibration au
+ *  moment même où le chronomètre se met à jour ajoutait une micro-saccade
+ *  visible sur la barre. Rien ne presse à la milliseconde près. */
 export function feedbackUrgence() {
-  vibrer(18);
-  bip([880], 0.05, 0.03);
+  requestAnimationFrame(() => {
+    vibrer(18);
+    bip([880], 0.05, 0.03);
+  });
 }

@@ -29,7 +29,7 @@ const MODE_LABELS = {
   mode_local_enabled: "Mode Local",
   mode_daily_enabled: "Défi du jour",
   mode_arcade_enabled: "Parties rapides (survie, chrono)",
-  mode_duel_enabled: "Duels",
+  mode_multi_enabled: "Multi",
   mode_enigme_enabled: "Énigme du jour",
 };
 

@@ -22,7 +22,7 @@ export default function AnswerGrid({ choix, answered, correctIndex, onPick, reve
   function choisir(i) {
     // Retour tactile immédiat, avant même la réponse du serveur : c'est ce qui
     // rend le clic satisfaisant. Quand la correction n'est pas connue tout de
-    // suite (duel, journalier), on se contente d'une vibration neutre.
+    // suite (multi, journalier), on se contente d'une vibration neutre.
     if (correctIndex !== undefined && correctIndex !== null) {
       i === correctIndex ? feedbackBon() : feedbackMauvais();
     }

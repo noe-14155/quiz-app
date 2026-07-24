@@ -1,427 +1,534 @@
-import { useState, useEffect, useRef } from "react";
-import { Copy, Star, Clock, Trophy, Check, X as XIcon, Minus } from "lucide-react";
-import { cardWrap, COLORS, FONT_DISPLAY } from "../../design/theme";
-import TopBar from "../../components/TopBar";
-import Button from "../../components/Button";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { ChevronLeft, Users, Copy, Check, Crown, Trophy, Wifi } from "lucide-react";
+import {
+  cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, gradient, gradientText, sectionLabel, tint,
+} from "../../design/theme";
 import AnswerGrid from "../../components/AnswerGrid";
-import QuitConfirmModal from "../../components/QuitConfirmModal";
-import SearchLink from "../../components/SearchLink";
+import Button from "../../components/Button";
+import Avatar from "../../components/Avatar";
+import TimerBar from "../../components/TimerBar";
+import { inputStyle } from "../../components/PageTitle";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
+import { feedbackBon, feedbackMauvais, feedbackFin, feedbackUrgence } from "../../design/feedback";
 
-const THEMES = [
-  "Cinéma/Séries", "Géographie", "Histoire", "Pays", "Acteurs/Célébrités",
-  "Anecdotes", "Sciences & Nature", "Sport", "Art & Littérature", "Gastronomie", "Technologie & Internet",
-];
-const POLL_MS = 2000;
-// Valeurs de repli uniquement : les durées réelles viennent du serveur
-// (state.time_per_question), qui les lit des réglages d'administration.
-const DEFAULT_TIME_PER_QUESTION = 15;
+/**
+ * Mode multi en temps réel.
+ *
+ * Le client ne reçoit JAMAIS l'ordre de passer à la question suivante : il le
+ * calcule, à partir de l'horodatage de départ envoyé par le serveur. C'est la
+ * même arithmétique que dans `modes/multi/service.py`, volontairement dupliquée
+ * — c'est ce qui permet à l'affichage d'être fluide entre deux sondages, et à
+ * un téléphone qui se réveille de retrouver sa place tout seul.
+ *
+ * Le décalage d'horloge est mesuré une fois à l'arrivée (`serveur_now`) : sans
+ * cela, un téléphone dont l'heure avance de vingt secondes verrait la partie en
+ * avance sur tout le monde.
+ */
 
-export default function Multi({ screen, onNavigate }) {
+const DUREE_DECOMPTE = 3;
+
+/** Même calcul que le serveur : où en est la partie, à cet instant précis. */
+function calculer(etat, maintenant) {
+  if (!etat?.started_at) return { statut: "salon", index: null, phase: null, resteMs: null };
+  const debut = new Date(etat.started_at).getTime();
+  const cycle = (etat.duree_question + etat.duree_reveal) * 1000;
+  let ecoule = maintenant - debut;
+
+  if (ecoule < DUREE_DECOMPTE * 1000) {
+    return { statut: "decompte", index: 0, phase: "decompte", resteMs: DUREE_DECOMPTE * 1000 - ecoule };
+  }
+  ecoule -= DUREE_DECOMPTE * 1000;
+  const index = Math.floor(ecoule / cycle);
+  if (index >= etat.nb_questions) return { statut: "termine", index: etat.nb_questions, phase: "fin", resteMs: 0 };
+
+  const resteCycle = ecoule % cycle;
+  const dureeQ = etat.duree_question * 1000;
+  return resteCycle < dureeQ
+    ? { statut: "en_cours", index, phase: "question", resteMs: dureeQ - resteCycle }
+    : { statut: "en_cours", index, phase: "reveal", resteMs: cycle - resteCycle };
+}
+
+export default function Multi({ onNavigate }) {
   const { user } = useAuth();
-  const [name, setName] = useState(user ? user.pseudo : "");
-  const [codeInput, setCodeInput] = useState("");
-  const [code, setCode] = useState(null);
-  const [isHost, setIsHost] = useState(false);
-  const [room, setRoom] = useState(null);
-  const [state, setState] = useState(null); // résultat de /state pendant la partie
-  const [error, setError] = useState(null);
-  const [quitOpen, setQuitOpen] = useState(false);
-  // Horloge locale : le sondage serveur est à 2s, bien trop lent pour une
-  // barre de temps fluide. On tick chaque seconde en local et on se cale sur
-  // question_started_at renvoyé par le serveur (qui reste la référence).
-  const [now, setNow] = useState(() => Date.now());
-  const pollRef = useRef(null);
+  const [vue, setVue] = useState("accueil");     // accueil | partie
+  const [etat, setEtat] = useState(null);
+  const [parties, setParties] = useState([]);
+  const [saisie, setSaisie] = useState("");
+  const [erreur, setErreur] = useState(null);
+  const [copie, setCopie] = useState(false);
+  const [nbQuestions, setNbQuestions] = useState(10);
+  const [duree, setDuree] = useState(15);
 
+  const [question, setQuestion] = useState(null);
+  const [reveal, setReveal] = useState(null);
+  const [repondu, setRepondu] = useState(null);
+  const [horloge, setHorloge] = useState(Date.now());
+
+  // Décalage entre l'heure du téléphone et celle du serveur, mesuré une fois.
+  const offset = useRef(0);
+  const prefetch = useRef({});     // questions déjà téléchargées, par index
+  const dernierePhase = useRef("");
+
+  const local = calculer(etat, horloge + offset.current);
+
+  /* --- Horloge locale : 200 ms suffisent pour un affichage fluide --------- */
   useEffect(() => {
-    if (screen !== "multi-play") return;
-    const t = setInterval(() => setNow(Date.now()), 250);
+    const t = setInterval(() => setHorloge(Date.now()), 200);
     return () => clearInterval(t);
-  }, [screen]);
+  }, []);
 
-  useEffect(() => {
-    if (user) setName(user.pseudo);
-  }, [user]);
+  const rafraichir = useCallback(async (code) => {
+    try {
+      const r = await apiFetch(`/api/multi/${code || etat?.code}`);
+      offset.current = new Date(r.serveur_now).getTime() - Date.now();
+      setEtat(r);
+      return r;
+    } catch (e) { setErreur(e.message); }
+  }, [etat?.code]);
 
-  // ---------- lobby polling ----------
+  /* --- Sondage : fréquent dans le salon, léger pendant la partie ---------- */
   useEffect(() => {
-    if (screen !== "multi-lobby" || !code) return;
-    async function poll() {
-      try {
-        const r = await apiFetch(`/api/multi/${code}`);
-        setRoom(r);
-        if (r.status === "playing") onNavigate("multi-play");
-      } catch (e) { /* ignore ponctuel */ }
+    if (vue !== "partie" || !etat?.code) return;
+    // Dans le salon, on guette l'arrivée des joueurs et le départ ; pendant une
+    // question, on ne rafraîchit que le compteur « x/y ont répondu ». Rien de
+    // vital ne dépend de ce sondage : l'avancement, lui, est calculé en local.
+    const periode = local.statut === "salon" ? 2000 : 3000;
+    if (local.statut === "termine") return;
+    const t = setInterval(() => rafraichir(), periode);
+    return () => clearInterval(t);
+  }, [vue, etat?.code, local.statut, rafraichir]);
+
+  /* --- Réactions aux changements de phase --------------------------------- */
+  useEffect(() => {
+    if (vue !== "partie" || !etat?.code) return;
+    const cle = `${local.statut}-${local.index}-${local.phase}`;
+    if (cle === dernierePhase.current) return;
+    dernierePhase.current = cle;
+
+    if (local.phase === "question") {
+      setReveal(null);
+      setRepondu(null);
+      charger(local.index);
+      // Préchargement de la suivante pendant qu'on joue celle-ci : elle ne sera
+      // servie qu'à partir de la phase de correction, mais l'appel est sans
+      // risque et évite tout temps mort.
+    } else if (local.phase === "reveal") {
+      chargerReveal(local.index);
+      charger(local.index + 1);
+    } else if (local.statut === "termine") {
+      rafraichir();
+      feedbackFin(true);
     }
-    poll();
-    pollRef.current = setInterval(poll, POLL_MS);
-    return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, code]);
+  }, [vue, etat?.code, local.statut, local.index, local.phase]);
 
-  // ---------- play polling ----------
-  // Architecture "l'hôte pilote" : SEUL l'hôte appelle /tick (qui fait avancer
-  // la partie ET renvoie l'état). Les autres joueurs appellent /state en
-  // lecture seule. Un seul écrivain de logique de jeu = plus de conflits.
+  /* --- Dernières secondes : petite vibration ------------------------------ */
   useEffect(() => {
-    if (screen !== "multi-play" || !code) return;
-    async function poll() {
-      try {
-        const endpoint = isHost ? `/api/multi/${code}/tick` : `/api/multi/${code}/state`;
-        const r = await apiFetch(endpoint, isHost ? { method: "POST" } : undefined);
-        setState(r);
-        if (r.room.status === "finished") onNavigate("multi-results");
-      } catch (e) { /* ignore ponctuel, on réessaie au prochain tick */ }
-    }
-    poll();
-    pollRef.current = setInterval(poll, POLL_MS);
-    return () => clearInterval(pollRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, code, isHost]);
+    if (local.phase !== "question" || repondu !== null) return;
+    const s = Math.ceil(local.resteMs / 1000);
+    if (s === 3) feedbackUrgence();
+  }, [Math.ceil((local.resteMs || 0) / 1000), local.phase, repondu]);
 
-  async function createRoom() {
-    setError(null);
+  async function charger(index) {
+    if (index == null || index < 0) return;
+    if (prefetch.current[index]) { setQuestion(prefetch.current[index]); return; }
     try {
-      const r = await apiFetch("/api/multi/create", { method: "POST", body: JSON.stringify({ host_name: name }) });
-      setCode(r.code);
-      setIsHost(true);
-      const roomData = await apiFetch(`/api/multi/${r.code}`);
-      setRoom(roomData);
-      onNavigate("multi-lobby");
-    } catch (e) { setError(e.message); }
+      const r = await apiFetch(`/api/multi/${etat.code}/question/${index}`);
+      prefetch.current[index] = r.question;
+      if (index === local.index) setQuestion(r.question);
+    } catch (e) { /* pas encore disponible : la phase suivante réessaiera */ }
   }
 
-  async function joinRoom() {
-    setError(null);
-    const c = codeInput.trim().toUpperCase();
+  async function chargerReveal(index) {
     try {
-      await apiFetch(`/api/multi/${c}/join`, { method: "POST", body: JSON.stringify({ player_name: name }) });
-      const roomData = await apiFetch(`/api/multi/${c}`);
-      setCode(c);
-      setIsHost(false);
-      setRoom(roomData);
-      onNavigate("multi-lobby");
-    } catch (e) { setError(e.message); }
+      const r = await apiFetch(`/api/multi/${etat.code}/reveal/${index}`);
+      setReveal(r);
+      if (repondu !== null) repondu === r.correct_index ? feedbackBon() : feedbackMauvais();
+    } catch (e) { /* ignoré : le prochain tour de boucle réessaiera */ }
   }
 
-  async function updateOptions(patch) {
-    const updated = { ...room, ...patch };
-    setRoom(updated);
+  async function repondre(choix) {
+    if (repondu !== null) return;
+    setRepondu(choix);   // affichage immédiat, sans attendre le serveur
     try {
-      await apiFetch(`/api/multi/${code}/options`, { method: "PATCH", body: JSON.stringify(patch) });
-    } catch (e) { /* re-sync au prochain poll */ }
-  }
-
-  function toggleTheme(t) {
-    const themes = room.themes.includes(t) ? room.themes.filter((x) => x !== t) : [...room.themes, t];
-    updateOptions({ themes });
-  }
-
-  async function startGame() {
-    setError(null);
-    try {
-      await apiFetch(`/api/multi/${code}/start`, { method: "POST" });
-    } catch (e) { setError(e.message); }
-  }
-
-  async function submitAnswer(choiceIdx) {
-    if (!state?.current_question) return;
-    try {
-      await apiFetch(`/api/multi/${code}/answer?question_index=${state.room.current_index}`, {
+      const r = await apiFetch(`/api/multi/${etat.code}/answer`, {
         method: "POST",
-        body: JSON.stringify({ player_name: name, choice: choiceIdx }),
+        body: JSON.stringify({ question_index: local.index, choix }),
       });
-      const r = await apiFetch(`/api/multi/${code}/state`);
-      setState(r);
-    } catch (e) { setError(e.message); }
+      setEtat((e) => ({ ...e, nb_reponses: r.nb_reponses }));
+    } catch (e) { /* hors fenêtre : le serveur tranche, on n'insiste pas */ }
   }
 
-  async function leaveRoom() {
-    clearInterval(pollRef.current);
-    setQuitOpen(false);
-    // Prévenir le serveur : si l'hôte quitte, la partie se termine pour tout le
-    // monde ; sinon le joueur est juste retiré de la liste. On n'attend pas la
-    // réponse pour naviguer (au cas où le réseau traîne).
-    if (code) {
-      apiFetch(`/api/multi/${code}/leave`, {
+  async function creer() {
+    setErreur(null);
+    try {
+      const r = await apiFetch("/api/multi/create", {
         method: "POST",
-        body: JSON.stringify({ player_name: name }),
-      }).catch(() => {});
+        body: JSON.stringify({ nb_questions: nbQuestions, duree_question: duree }),
+      });
+      offset.current = new Date(r.serveur_now).getTime() - Date.now();
+      prefetch.current = {};
+      setEtat(r); setVue("partie");
+    } catch (e) { setErreur(e.message); }
+  }
+
+  async function rejoindre(code) {
+    const c = (code || saisie).trim().toUpperCase();
+    if (c.length !== 5) { setErreur("Le code fait 5 caractères."); return; }
+    setErreur(null);
+    try {
+      const r = await apiFetch(`/api/multi/${c}/join`, { method: "POST" });
+      offset.current = new Date(r.serveur_now).getTime() - Date.now();
+      prefetch.current = {};
+      setEtat(r); setVue("partie");
+    } catch (e) {
+      // Une partie déjà lancée à laquelle on participe déjà : on l'ouvre quand même.
+      if (e.status === 409) { const r = await rafraichir(c); if (r?.je_participe) { setVue("partie"); return; } }
+      setErreur(e.message);
     }
-    setCode(null);
-    setRoom(null);
-    setState(null);
-    setIsHost(false);
-    onNavigate("home");
   }
 
-  // ---------- CHOICE ----------
-  if (screen === "multi-choice") {
+  async function lancer() {
+    try { setEtat(await apiFetch(`/api/multi/${etat.code}/start`, { method: "POST" })); }
+    catch (e) { setErreur(e.message); }
+  }
+
+  useEffect(() => {
+    apiFetch("/api/multi").then((r) => setParties(r.parties)).catch(() => {});
+  }, [vue]);
+
+  function copier() {
+    navigator.clipboard?.writeText(etat.code).then(() => {
+      setCopie(true);
+      setTimeout(() => setCopie(false), 1800);
+    }).catch(() => {});
+  }
+
+  /* ======================================================================= */
+
+  if (!user) {
     return (
       <div style={cardWrap}>
-        <TopBar screen="multi-choice" onNavigate={onNavigate} />
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 4px" }}>Mode Multi</h2>
-        <p style={{ color: COLORS.muted, margin: "0 0 20px", fontSize: 14 }}>Héberge une partie ou rejoins-en une avec un code.</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ background: COLORS.card, borderRadius: 16, padding: 18 }}>
-            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: "0 0 4px" }}>Héberger une partie</p>
-            <Button onClick={() => { setError(null); onNavigate("multi-host-setup"); }}>Héberger</Button>
-          </div>
-          <div style={{ background: COLORS.card, borderRadius: 16, padding: 18 }}>
-            <p style={{ fontFamily: FONT_DISPLAY, fontSize: 18, margin: "0 0 4px" }}>Rejoindre une partie</p>
-            <Button onClick={() => { setError(null); onNavigate("multi-join-setup"); }}>Rejoindre</Button>
-          </div>
+        <Entete onRetour={() => onNavigate("jouer")} titre="Multi" />
+        <p style={{ color: COLORS.muted, fontSize: 14 }}>Il faut un compte pour jouer à plusieurs.</p>
+        <Button onClick={() => onNavigate("login")} style={{ marginTop: 16 }}>Se connecter</Button>
+      </div>
+    );
+  }
+
+  if (vue === "accueil") {
+    return (
+      <div style={cardWrap}>
+        <Entete onRetour={() => onNavigate("jouer")} titre="Multi" />
+        <p style={{ color: COLORS.muted, fontSize: 13.5, lineHeight: 1.5, margin: "0 0 22px" }}>
+          Tout le monde répond aux mêmes questions en même temps. Le plus rapide marque le plus de points.
+        </p>
+
+        <div style={sectionLabel}>Créer une partie</div>
+        <Reglage titre="Questions" valeurs={[5, 10, 15]} actif={nbQuestions} onChange={setNbQuestions} />
+        <Reglage titre="Secondes par question" valeurs={[10, 15, 20, 30]} actif={duree} onChange={setDuree} />
+        <Button onClick={creer} style={{ marginTop: 14 }}>
+          <Users size={17} /> Créer le salon
+        </Button>
+
+        <div style={sectionLabel}>Rejoindre</div>
+        <div style={{ display: "flex", gap: 9 }}>
+          <input
+            value={saisie}
+            onChange={(e) => setSaisie(e.target.value.toUpperCase().slice(0, 5))}
+            placeholder="CODE"
+            style={inputStyle({ flex: 1, textAlign: "center", letterSpacing: 4, fontSize: 20 })}
+          />
+          <Button onClick={() => rejoindre()} variant="secondary" style={{ width: 120 }}>Entrer</Button>
         </div>
-      </div>
-    );
-  }
 
-  // ---------- HOST SETUP ----------
-  if (screen === "multi-host-setup") {
-    return (
-      <div style={cardWrap}>
-        <TopBar screen="multi-host-setup" onNavigate={onNavigate} />
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>Héberger une partie</h2>
-        {user ? (
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 16px" }}>Connecté en tant que <b>{user.pseudo}</b></p>
-        ) : (
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ton pseudo"
-            style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 16, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
+        {erreur && <Erreur>{erreur}</Erreur>}
+
+        {parties.length > 0 && (
+          <>
+            <div style={sectionLabel}>Mes parties</div>
+            {parties.map((p) => (
+              <button
+                key={p.code}
+                onClick={() => rejoindre(p.code)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+                  background: COLORS.card, border: `1px solid ${COLORS.cardAlt}`, borderRadius: 14,
+                  padding: "13px 14px", marginBottom: 9, cursor: "pointer",
+                }}
+              >
+                <span style={{
+                  fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, letterSpacing: 2,
+                  color: COLORS.gold, minWidth: 62,
+                }}>{p.code}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: COLORS.text }}>
+                    {p.statut === "termine"
+                      ? `${p.ma_position === 1 ? "🏆 Gagné" : `${p.ma_position}ᵉ`} · ${p.mes_points} pts`
+                      : p.statut === "salon" ? "En attente" : "En cours"}
+                  </span>
+                  <span style={{ display: "block", fontSize: 11.5, color: COLORS.muted }}>
+                    {p.nb_joueurs} joueur{p.nb_joueurs > 1 ? "s" : ""} · {p.nb_questions} questions
+                  </span>
+                </span>
+              </button>
+            ))}
+          </>
         )}
-        {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 16px" }}>{error}</p>}
-        <Button onClick={createRoom} disabled={!name.trim()} style={{ width: "100%" }}>Créer la partie</Button>
       </div>
     );
   }
 
-  // ---------- JOIN SETUP ----------
-  if (screen === "multi-join-setup") {
+  /* ---- Salon ------------------------------------------------------------ */
+  if (local.statut === "salon") {
     return (
       <div style={cardWrap}>
-        <TopBar screen="multi-join-setup" onNavigate={onNavigate} />
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 20px" }}>Rejoindre une partie</h2>
-        <input value={codeInput} onChange={(e) => setCodeInput(e.target.value.toUpperCase())} placeholder="Code (ex: HGFDO)"
-          style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 12, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15, letterSpacing: 2, textTransform: "uppercase" }} />
-        {user ? (
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 16px" }}>Connecté en tant que <b>{user.pseudo}</b></p>
-        ) : (
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ton pseudo"
-            style={{ width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 16, border: `2px solid ${COLORS.cardAlt}`, background: COLORS.card, color: COLORS.text, fontSize: 15 }} />
-        )}
-        {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 16px" }}>{error}</p>}
-        <Button onClick={joinRoom} disabled={!codeInput.trim() || !name.trim()} style={{ width: "100%" }}>Rejoindre</Button>
-      </div>
-    );
-  }
-
-  // ---------- LOBBY ----------
-  if (screen === "multi-lobby" && room) {
-    return (
-      <div style={cardWrap}>
-        {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveRoom} />}
-        <TopBar screen="multi-lobby" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <div>
-            <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>Code de la partie</p>
-            <p style={{ margin: 0, fontFamily: FONT_DISPLAY, fontSize: 30, fontWeight: 700, letterSpacing: 4 }}>{code}</p>
+        <Entete onRetour={() => { setVue("accueil"); setEtat(null); }} titre="Salon" />
+        <div style={{
+          textAlign: "center", padding: "26px 16px", borderRadius: 20,
+          background: tint(COLORS.gold, 8), border: `1px solid ${tint(COLORS.gold, 20)}`, marginBottom: 18,
+        }}>
+          <div style={{ fontSize: 11.5, color: COLORS.muted, fontWeight: 700, letterSpacing: 1 }}>
+            CODE DE LA PARTIE
           </div>
-          <button onClick={() => navigator.clipboard?.writeText(code)} style={{ background: COLORS.card, border: `2px solid ${COLORS.cardAlt}`, borderRadius: 12, padding: 10, cursor: "pointer" }}>
-            <Copy size={18} color={COLORS.gold} />
+          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 46, letterSpacing: 8, ...gradientText(120) }}>
+            {etat.code}
+          </div>
+          <button onClick={copier} style={{
+            marginTop: 6, background: "none", border: "none", cursor: "pointer",
+            color: COLORS.muted, fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5,
+          }}>
+            {copie ? <><Check size={13} /> Copié</> : <><Copy size={13} /> Copier le code</>}
           </button>
         </div>
 
-        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Joueurs ({room.players.length})</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 22 }}>
-          {room.players.map((p, i) => (
-            <div key={i} style={{ background: COLORS.card, borderRadius: 999, padding: "8px 14px", fontSize: 13, fontWeight: 700 }}>
-              {p}{p === room.host_name ? " (hôte)" : ""}
-            </div>
-          ))}
+        <div style={sectionLabel}>
+          Joueurs ({etat.nb_joueurs}/{etat.max_joueurs})
         </div>
+        {etat.joueurs.map((j) => (
+          <div key={j.pseudo} style={{
+            display: "flex", alignItems: "center", gap: 11, padding: "9px 2px",
+            borderBottom: `1px solid ${COLORS.cardAlt}`,
+          }}>
+            <Avatar face={j.avatar_face} color={j.avatar_color} size={34} />
+            <span style={{ flex: 1, fontWeight: 700, fontSize: 14.5, color: COLORS.text }}>{j.pseudo}</span>
+            {j.pseudo === etat.hote && <Crown size={15} color={COLORS.accent3} />}
+          </div>
+        ))}
 
-        {isHost ? (
+        <p style={{ color: COLORS.muted, fontSize: 12.5, margin: "16px 0 0", display: "flex", gap: 6 }}>
+          <Wifi size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          {etat.je_suis_hote
+            ? `Dicte le code à tes amis. Il faut au moins ${etat.min_joueurs} joueurs.`
+            : "En attente du lancement par l'hôte…"}
+        </p>
+
+        {etat.je_suis_hote && (
+          <Button onClick={lancer} disabled={etat.nb_joueurs < etat.min_joueurs} style={{ marginTop: 18 }}>
+            Lancer la partie
+          </Button>
+        )}
+        {erreur && <Erreur>{erreur}</Erreur>}
+      </div>
+    );
+  }
+
+  /* ---- Décompte --------------------------------------------------------- */
+  if (local.statut === "decompte") {
+    return (
+      <div style={{ ...cardWrap, textAlign: "center", paddingTop: 90 }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 96, ...gradientText(120), animation: "sqpop .4s both" }}>
+          {Math.ceil(local.resteMs / 1000)}
+        </div>
+        <p style={{ color: COLORS.muted, fontSize: 14, marginTop: 8 }}>Prépare-toi…</p>
+      </div>
+    );
+  }
+
+  /* ---- Fin de partie ----------------------------------------------------- */
+  if (local.statut === "termine") {
+    const classement = etat.classement || [];
+    const moi = classement.find((j) => j.pseudo === user.pseudo);
+    return (
+      <div style={cardWrap}>
+        <Entete onRetour={() => { setVue("accueil"); setEtat(null); }} titre="Résultat" />
+        <div style={{ textAlign: "center", margin: "10px 0 26px" }}>
+          <Trophy size={34} color={COLORS.accent3} />
+          <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 30, ...gradientText(120), marginTop: 6 }}>
+            {moi?.position === 1 ? "Victoire !" : `${moi?.position}ᵉ place`}
+          </div>
+          <div style={{ color: COLORS.muted, fontSize: 13.5 }}>{moi?.points} points · {moi?.bonnes} bonnes réponses</div>
+        </div>
+        <Classement lignes={classement} moi={user.pseudo} />
+        <Button onClick={() => { setVue("accueil"); setEtat(null); }} style={{ marginTop: 20 }}>
+          Nouvelle partie
+        </Button>
+      </div>
+    );
+  }
+
+  /* ---- Correction -------------------------------------------------------- */
+  if (local.phase === "reveal") {
+    return (
+      <div style={cardWrap}>
+        <TimerBar duree={etat.duree_reveal} cle={`rev-${local.index}`} hauteur={6} style={{ marginBottom: 18 }} />
+        {reveal ? (
           <>
-            <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Thèmes</p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
-              {THEMES.map((t) => {
-                const active = room.themes.includes(t);
-                return (
-                  <button key={t} onClick={() => toggleTheme(t)} style={{
-                    padding: "8px 16px", borderRadius: 999, border: active ? `2px solid ${COLORS.gold}` : `2px solid ${COLORS.cardAlt}`,
-                    background: active ? "rgba(59,130,246,0.12)" : COLORS.card, color: active ? COLORS.gold : COLORS.text, fontWeight: 700, fontSize: 13, cursor: "pointer",
-                  }}>{t}</button>
-                );
-              })}
+            <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 700 }}>
+              Question {local.index + 1}/{etat.nb_questions}
             </div>
-            <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Difficulté</p>
-            <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} onClick={() => updateOptions({ difficulte: n })} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-                  <Star size={26} color={COLORS.gold} fill={n <= room.difficulte ? COLORS.gold : "none"} />
-                </button>
-              ))}
+            <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 17, margin: "6px 0 14px", color: COLORS.text }}>
+              {reveal.question}
+            </p>
+            <div style={{
+              padding: "12px 14px", borderRadius: 14, marginBottom: 6,
+              background: tint(COLORS.success, 12), border: `1px solid ${tint(COLORS.success, 28)}`,
+            }}>
+              <div style={{ fontSize: 11.5, color: COLORS.muted, fontWeight: 700 }}>BONNE RÉPONSE</div>
+              <div style={{ fontWeight: 800, fontSize: 15.5, color: COLORS.text }}>
+                {reveal.choix[reveal.correct_index]}
+              </div>
             </div>
-            <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px" }}>Questions : <b>{room.nb_questions}</b></p>
-            <input type="range" min={3} max={15} value={room.nb_questions} onChange={(e) => updateOptions({ nb_questions: Number(e.target.value) })}
-              style={{ width: "100%", accentColor: COLORS.gold, marginBottom: 22 }} />
-            {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
-            <Button onClick={startGame} disabled={room.players.length < 2} style={{ width: "100%" }}>Lancer la partie</Button>
+            {reveal.explication && (
+              <p style={{ color: COLORS.muted, fontSize: 12.5, lineHeight: 1.5, margin: "0 0 16px" }}>
+                {reveal.explication}
+              </p>
+            )}
+            <div style={sectionLabel}>Classement</div>
+            <Classement lignes={reveal.classement} moi={user.pseudo} compact />
           </>
         ) : (
-          <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 20 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 13, color: COLORS.muted }}>Thèmes : {room.themes.join(", ")}</p>
-            <p style={{ margin: "0 0 6px", fontSize: 13, color: COLORS.muted }}>Difficulté max : {room.difficulte} ★</p>
-            <p style={{ margin: 0, fontSize: 13, color: COLORS.muted }}>Questions : {room.nb_questions}</p>
-          </div>
+          <p style={{ color: COLORS.muted, fontSize: 14, textAlign: "center", padding: 30 }}>Correction…</p>
         )}
       </div>
     );
   }
 
-  // ---------- PLAY ----------
-  if (screen === "multi-play" && state) {
-    const q = state.current_question;
-    const myAnswer = state.answers[name]?.choice ?? null;
-    const isReveal = state.room.phase === "reveal";
-
-    const startedAt = state.room.question_started_at ? Date.parse(state.room.question_started_at) : null;
-    const elapsed = startedAt ? (now - startedAt) / 1000 : 0;
-    const tpq = state.time_per_question || DEFAULT_TIME_PER_QUESTION;
-    const timeLeft = Math.max(0, Math.ceil(tpq - elapsed));
-    const timePct = Math.max(0, Math.min(100, ((tpq - elapsed) / tpq) * 100));
-
-    // Qui a trouvé : pendant la révélation, la bonne réponse est connue, donc
-    // on peut distinguer trouvé / raté / pas répondu plutôt qu'un simple
-    // "a répondu" qui ne disait rien du résultat.
-    const correctIdx = q && q.bonne_reponse ? q.bonne_reponse - 1 : null;
-    function playerOutcome(p) {
-      const a = state.answers[p];
-      if (!a) return "none";
-      if (correctIdx === null) return "answered";
-      return a.choice === correctIdx ? "correct" : "wrong";
-    }
-
-    if (!isReveal) {
-      return (
-        <div style={cardWrap}>
-          {quitOpen && <QuitConfirmModal onCancel={() => setQuitOpen(false)} onConfirm={leaveRoom} />}
-          <TopBar screen="multi-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700 }}>Question {state.room.current_index + 1} / {JSON.parse(state.room.question_ids || "[]").length || "?"}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, color: timeLeft <= 5 ? COLORS.danger : COLORS.muted }}>
-              <Clock size={14} /><span style={{ fontSize: 13, fontWeight: 700 }}>{timeLeft}s</span>
-            </div>
-          </div>
-          <div style={{ height: 6, borderRadius: 3, background: COLORS.cardAlt, marginBottom: 16, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${timePct}%`, background: timeLeft <= 5 ? COLORS.danger : COLORS.gold, transition: "width 0.25s linear" }} />
-          </div>
-          {q && (
-            <>
-              <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "16px 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
-              <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 700, margin: "0 0 20px" }}>{q.question}</h3>
-              <AnswerGrid choix={q.choix} answered={myAnswer} onPick={submitAnswer} revealCorrectness={false} />
-            </>
-          )}
-          {error && <p style={{ color: COLORS.danger, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: "18px 0 10px", textTransform: "uppercase" }}>
-            Qui a répondu ({state.room.players.filter((p) => state.answers[p]).length}/{state.room.players.length})
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {state.room.players.map((p) => {
-              const done = !!state.answers[p];
-              return (
-                <div key={p} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  background: COLORS.card, borderRadius: 12, padding: "8px 14px",
-                  border: `2px solid ${done ? COLORS.success : "transparent"}`,
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>{p}{p === name ? " (toi)" : ""}</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: done ? COLORS.success : COLORS.muted }}>
-                    {done ? <><Check size={14} /> A répondu</> : <><Minus size={14} /> En attente…</>}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    // reveal phase
-    return (
-      <div style={cardWrap}>
-        <TopBar screen="multi-play" onNavigate={onNavigate} onRequestQuit={() => setQuitOpen(true)} />
-        {q && (
-          <>
-            <p style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, margin: "0 0 8px", textTransform: "uppercase" }}>{q.theme}</p>
-            <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 700, margin: "0 0 16px" }}>{q.question}</h3>
-            <AnswerGrid choix={q.choix} answered={myAnswer ?? -1} correctIndex={q.bonne_reponse ? q.bonne_reponse - 1 : null} onPick={() => {}} />
-            <div style={{ background: COLORS.card, borderRadius: 14, padding: 16, margin: "8px 0 18px" }}>
-              {q.explication && <p style={{ margin: "0 0 12px", fontSize: 14, color: COLORS.muted }}>{q.explication}</p>}
-              <SearchLink question={q.question} reponse={correctIdx !== null ? q.choix[correctIdx] : ""} />
-            </div>
-          </>
-        )}
-        <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 10px", textTransform: "uppercase" }}>Résultat de la manche</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
-          {[...state.room.players].sort((a, b) => (state.scores[b] || 0) - (state.scores[a] || 0)).map((p) => {
-            const outcome = playerOutcome(p);
-            const color = outcome === "correct" ? COLORS.success : outcome === "wrong" ? COLORS.danger : COLORS.muted;
-            const label = outcome === "correct" ? "Trouvé" : outcome === "wrong" ? "Raté" : "Pas répondu";
-            const Icon = outcome === "correct" ? Check : outcome === "wrong" ? XIcon : Minus;
-            return (
-              <div key={p} style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                background: COLORS.card, borderRadius: 12, padding: "9px 14px",
-                borderLeft: `4px solid ${color}`,
-              }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 13 }}>
-                  <Icon size={15} color={color} />
-                  {p}{p === name ? " (toi)" : ""}
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color }}>{label}</span>
-                  <span style={{ fontWeight: 700, color: COLORS.gold, fontSize: 13, minWidth: 46, textAlign: "right" }}>{state.scores[p] || 0} pts</span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ textAlign: "center" }}>
-          <Trophy size={24} color={COLORS.gold} style={{ marginBottom: 4 }} />
-          <p style={{ fontSize: 13, color: COLORS.muted, margin: 0 }}>Prochaine question dans quelques secondes…</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ---------- RESULTS ----------
-  if (screen === "multi-results" && state) {
-    const sorted = [...state.room.players].sort((a, b) => (state.scores[b] || 0) - (state.scores[a] || 0));
-    return (
-      <div style={cardWrap}>
-        <TopBar screen="multi-results" onNavigate={onNavigate} />
-        <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 700, margin: "0 0 18px" }}>Résultats de la partie</h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-          {sorted.map((p, i) => (
-            <div key={p} style={{ display: "flex", justifyContent: "space-between", background: i === 0 ? "rgba(59,130,246,0.12)" : COLORS.card, border: i === 0 ? `2px solid ${COLORS.gold}` : "2px solid transparent", borderRadius: 12, padding: "10px 16px" }}>
-              <span style={{ fontWeight: 700 }}>{i + 1}. {p}</span>
-              <span style={{ fontWeight: 700, color: COLORS.muted }}>{state.scores[p] || 0} pts</span>
-            </div>
-          ))}
-        </div>
-        <Button variant="secondary" onClick={leaveRoom} style={{ width: "100%" }}>Accueil</Button>
-      </div>
-    );
-  }
-
-  // Cas transitoire (ex: venant de rejoindre mais room pas encore chargée) :
-  // on retombe sur l'écran de choix plutôt que d'afficher une page blanche.
+  /* ---- Question ---------------------------------------------------------- */
+  const secondes = Math.ceil(local.resteMs / 1000);
   return (
     <div style={cardWrap}>
-      <TopBar screen="multi-choice" onNavigate={onNavigate} />
-      <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement...</p>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 8 }}>
+        <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 42, lineHeight: 0.85, ...gradientText(120) }}>
+          {String(local.index + 1).padStart(2, "0")}
+        </span>
+        <span style={{
+          fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 20,
+          color: secondes <= 3 ? COLORS.danger : COLORS.muted,
+        }}>
+          {secondes}s
+        </span>
+      </div>
+      <TimerBar duree={etat.duree_question} cle={`q-${local.index}`} danger={secondes <= 3}
+                hauteur={9} style={{ marginBottom: 18 }} />
+
+      {question ? (
+        <>
+          <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 18.5, lineHeight: 1.3, margin: "0 0 18px", color: COLORS.text }}>
+            {question.question}
+          </p>
+          <AnswerGrid
+            choix={question.choix}
+            answered={repondu}
+            correctIndex={null}
+            revealCorrectness={false}
+            onPick={repondre}
+          />
+          <div style={{
+            textAlign: "center", fontSize: 12.5, color: COLORS.muted, fontFamily: FONT_BODY, marginTop: 4,
+          }}>
+            {repondu !== null
+              ? `Réponse envoyée · ${etat.nb_reponses}/${etat.nb_joueurs} ont répondu`
+              : `${etat.nb_reponses}/${etat.nb_joueurs} ont répondu`}
+          </div>
+        </>
+      ) : (
+        <p style={{ color: COLORS.muted, fontSize: 14, textAlign: "center", padding: 30 }}>Chargement…</p>
+      )}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------------- */
+
+function Entete({ onRetour, titre }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+      <button onClick={onRetour} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+        <ChevronLeft size={22} color={COLORS.muted} />
+      </button>
+      <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 24, margin: 0, color: COLORS.text }}>
+        {titre}
+      </h2>
+    </div>
+  );
+}
+
+function Reglage({ titre, valeurs, actif, onChange }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 700, marginBottom: 7 }}>{titre}</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {valeurs.map((v) => (
+          <button
+            key={v}
+            onClick={() => onChange(v)}
+            style={{
+              flex: 1, padding: "11px 0", borderRadius: 12, cursor: "pointer",
+              fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15,
+              border: `1.5px solid ${v === actif ? COLORS.gold : COLORS.cardAlt}`,
+              background: v === actif ? tint(COLORS.gold, 12) : COLORS.soft,
+              color: v === actif ? COLORS.gold : COLORS.muted,
+            }}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Classement({ lignes, moi, compact = false }) {
+  return (
+    <div>
+      {lignes.map((j) => {
+        const cestMoi = j.pseudo === moi;
+        return (
+          <div key={j.pseudo} style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: compact ? "7px 10px" : "10px 12px", borderRadius: 12, marginBottom: 6,
+            background: cestMoi ? tint(COLORS.gold, 10) : COLORS.card,
+            border: `1px solid ${cestMoi ? tint(COLORS.gold, 24) : COLORS.cardAlt}`,
+          }}>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14,
+              color: j.position === 1 ? COLORS.accent3 : COLORS.muted, minWidth: 18,
+            }}>
+              {j.position}
+            </span>
+            <Avatar face={j.avatar_face} color={j.avatar_color} size={compact ? 26 : 30} />
+            <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 14, color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {j.pseudo}
+            </span>
+            <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15, color: COLORS.text }}>
+              {j.points}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Erreur({ children }) {
+  return (
+    <p style={{
+      color: COLORS.danger, fontSize: 13, marginTop: 12, padding: "10px 12px",
+      background: tint(COLORS.danger, 10), borderRadius: 12,
+    }}>
+      {children}
+    </p>
   );
 }
