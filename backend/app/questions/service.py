@@ -89,7 +89,7 @@ def shuffle_choices(question, seed=None):
     return {**question, "choix": choix, "bonne_reponse": bonne}
 
 
-def fetch_questions(themes=None, difficulte=None, difficulte_max=None, exclude_ids=None, limit=10, hide_answer=True, allow_repeat=True, shuffle=True):
+def fetch_questions(themes=None, difficulte=None, difficulte_max=None, exclude_ids=None, limit=10, hide_answer=True, allow_repeat=True, shuffle=True, user_id=None):
     """Pioche des questions en base, mélange leurs réponses, et masque la
     bonne réponse/l'explication si hide_answer=True (cas des modes où le
     client ne doit pas voir la réponse avant d'avoir répondu).
@@ -98,26 +98,44 @@ def fetch_questions(themes=None, difficulte=None, difficulte_max=None, exclude_i
     ensemble (mode classé) : mélanger les réponses des 1114 questions pour
     n'en garder que 10 était du travail jeté à la poubelle."""
     conn = get_connection()
-    query = "SELECT * FROM questions WHERE 1=1"
-    params = []
+    # Rotation : quand on connaît le joueur, on sert d'abord les questions
+    # qu'il n'a JAMAIS vues, puis les plus anciennes. Un simple ORDER BY
+    # RANDOM() ramenait sans cesse les mêmes : sur 1 500 questions, tirer 10
+    # fois au hasard fait réapparaître un doublon bien plus vite qu'on ne le
+    # croit (c'est le paradoxe des anniversaires).
+    if user_id is not None:
+        query = (
+            "SELECT q.* FROM questions q "
+            "LEFT JOIN question_results r ON r.question_id = q.id AND r.user_id = ? "
+            "WHERE 1=1"
+        )
+        params = [user_id]
+    else:
+        query = "SELECT * FROM questions q WHERE 1=1"
+        params = []
     if themes:
         placeholders = ",".join("?" for _ in themes)
-        query += f" AND theme IN ({placeholders})"
+        query += f" AND q.theme IN ({placeholders})"
         params.extend(themes)
     if difficulte is not None:
-        query += " AND difficulte = ?"
+        query += " AND q.difficulte = ?"
         params.append(difficulte)
     if difficulte_max is not None:
-        query += " AND difficulte <= ?"
+        query += " AND q.difficulte <= ?"
         params.append(difficulte_max)
     if exclude_ids:
         placeholders = ",".join("?" for _ in exclude_ids)
-        query += f" AND id NOT IN ({placeholders})"
+        query += f" AND q.id NOT IN ({placeholders})"
         params.extend(exclude_ids)
     # Le LIMIT est poussé dans le SQL : avant, TOUTES les questions
     # correspondantes (jusqu'à 1114) étaient chargées en mémoire et converties
     # en dictionnaires pour n'en garder que 10.
-    query += " ORDER BY RANDOM()"
+    if user_id is not None:
+        # Jamais vues d'abord (r.question_id NULL), puis les plus anciennes,
+        # et au hasard à l'intérieur de chaque groupe.
+        query += " ORDER BY (r.question_id IS NOT NULL), r.updated_at, RANDOM()"
+    else:
+        query += " ORDER BY RANDOM()"
     if limit is not None and not allow_repeat:
         query += " LIMIT ?"
         params.append(limit)

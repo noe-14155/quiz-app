@@ -1,13 +1,12 @@
 """Configuration du mode classé.
 
 Système de progression :
-- 7 rangs : Figurant → Candidat → Qualifié → Finaliste → Champion → Maître de
-  Midi → Hall of Fame.
+- 7 rangs : Novice → Apprenti → Confirmé → Expert → Champion → Maître → Légende.
 - Chaque rang couvre une plage de points propre (plages IRRÉGULIÈRES, voir
   RANK_RANGES) et se découpe en 3 paliers réguliers (III, II, I).
   Le nombre total de paliers reste donc 18 (tiers 0 à 17), ce qui permet de
   conserver la courbe de gain/malus indexée sur le tier.
-- Hall of Fame est le rang sommet : au-delà de Hall of Fame I les points
+- Légende est le rang sommet : au-delà de Légende I les points
   continuent de monter, le rang reste le même (le classement départage sur les
   points).
 - Le barème dépend du taux de réussite attendu au rang (voir plus bas).
@@ -18,13 +17,13 @@ Système de progression :
 
 # (nom, point de départ, dernier point du rang ; None = illimité)
 RANK_RANGES = [
-    ("Figurant", 0, 199),
-    ("Candidat", 200, 499),
-    ("Qualifié", 500, 999),
-    ("Finaliste", 1000, 1799),
+    ("Novice", 0, 199),
+    ("Apprenti", 200, 499),
+    ("Confirmé", 500, 999),
+    ("Expert", 1000, 1799),
     ("Champion", 1800, 2999),
-    ("Maître de Midi", 3000, 4999),
-    ("Hall of Fame", 5000, None),
+    ("Maître", 3000, 4999),
+    ("Légende", 5000, None),
 ]
 
 RANKS = [r[0] for r in RANK_RANGES]
@@ -89,14 +88,14 @@ def _v(cfg, key):
 # Sur N questions, réussir exactement N x p fois donne bien un solde nul.
 #
 # Conséquence : plus le rang est élevé, plus une bonne réponse rapporte peu et
-# plus une erreur coûte cher. À Hall of Fame (95 % attendu), une bonne réponse
+# plus une erreur coûte cher. Au rang Légende (95 % attendu), une bonne réponse
 # vaut +3 et une erreur -57 : il faut être quasiment incollable pour progresser,
 # et une seule erreur efface le bénéfice de dix-neuf bonnes réponses.
 #
 # La difficulté des questions n'entre pas dans le calcul : elle est déjà prise
 # en compte en amont, puisque les questions servies deviennent plus dures à
 # mesure qu'on monte (voir weights_for_tier). Atteindre 80 % au rang Champion
-# est donc bien plus exigeant qu'atteindre 80 % au rang Figurant.
+# est donc bien plus exigeant qu'atteindre 80 % au rang Novice.
 # ---------------------------------------------------------------------------
 
 # Taux de réussite attendu par rang, dans l'ordre de RANK_RANGES.
@@ -149,8 +148,8 @@ def delta_for(points: int, difficulte: int, correct: bool, cfg=None,
 
 
 def tier_from_points(rank_points: int, cfg=None) -> int:
-    """Tier (0 = Figurant III … 20 = Hall of Fame I). Plafonné : au-delà, les
-    points montent mais le rang reste Hall of Fame I."""
+    """Tier (0 = Novice III … 20 = Légende I). Plafonné : au-delà, les points
+    montent mais le rang reste Légende I."""
     tier = 0
     for i, start in enumerate(TIER_STARTS):
         if rank_points >= start:

@@ -19,16 +19,16 @@ from app.modes.admin.service import is_mode_enabled, get_settings
 router = APIRouter(prefix="/api/ranked", tags=["ranked"])
 
 
-def _pick_weighted_questions(tier: int, nb: int, cfg):
+def _pick_weighted_questions(tier: int, nb: int, cfg, user_id=None):
     weights = rank_config.weights_for_tier(tier, cfg)
     # shuffle=False : on ne mélange que les 10 questions retenues (plus bas),
     # pas les 1114 candidates dont 1104 seront jetées.
-    all_questions = questions_service.fetch_questions(
-        limit=100000, hide_answer=False, allow_repeat=False, shuffle=False
-    )
-    by_difficulty = {d: [q for q in all_questions if q["difficulte"] == d] for d in range(1, 6)}
-
-    picked, used_ids = [], set()
+    # On tire la difficulté visée pour chacune des `nb` questions, puis on va
+    # chercher UNE question de ce niveau en base. Autrefois la banque entière
+    # était chargée en mémoire à chaque partie : tenable avec 1 500 questions,
+    # beaucoup moins avec 3 000, et surtout impossible d'exploiter l'historique
+    # du joueur. Ici la rotation est faite par le SQL (voir fetch_questions).
+    picked, used_ids = [], []
     for _ in range(nb):
         total = sum(weights) or 1
         target, acc, target_diff = random.uniform(0, total), 0, 1
@@ -37,13 +37,20 @@ def _pick_weighted_questions(tier: int, nb: int, cfg):
             if target < acc:
                 target_diff = i + 1
                 break
-        pool = [q for q in by_difficulty.get(target_diff, []) if q["id"] not in used_ids]
-        if not pool:
-            pool = [q for q in all_questions if q["id"] not in used_ids]
-        if not pool:
+        lot = questions_service.fetch_questions(
+            difficulte=target_diff, exclude_ids=used_ids, limit=1,
+            hide_answer=False, allow_repeat=False, shuffle=False, user_id=user_id,
+        )
+        if not lot:
+            # Plus rien à ce niveau : on prend n'importe quelle question inédite.
+            lot = questions_service.fetch_questions(
+                exclude_ids=used_ids, limit=1,
+                hide_answer=False, allow_repeat=False, shuffle=False, user_id=user_id,
+            )
+        if not lot:
             break
-        q = random.choice(pool)
-        used_ids.add(q["id"])
+        q = lot[0]
+        used_ids.append(q["id"])
         picked.append(questions_service.shuffle_choices(q))
     return picked
 
@@ -83,7 +90,7 @@ def start_party(user=Depends(get_current_user)):
     settings = get_settings()
     cfg = settings
     tier = rank_config.tier_from_points(user["rank_points"], cfg)
-    picked = _pick_weighted_questions(tier, rank_config.NB_QUESTIONS_PER_PARTY, cfg)
+    picked = _pick_weighted_questions(tier, rank_config.NB_QUESTIONS_PER_PARTY, cfg, user_id=user["id"])
 
     conn = get_connection()
     cur = conn.cursor()
