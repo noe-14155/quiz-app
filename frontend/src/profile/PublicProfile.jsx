@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, Award, Crown, CalendarDays } from "lucide-react";
+import { ChevronLeft, Award, Crown, CalendarDays, TrendingUp, TrendingDown } from "lucide-react";
 import {
   cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, sectionLabel, tint,
-  tierInfo, rankGradient,
+  tierInfo, rankGradient, RANKS,
 } from "../design/theme";
 import { iconeDuRang } from "../design/rankIcons";
+import Collapsible from "../components/Collapsible";
+import Avatar from "../components/Avatar";
 import { apiFetch } from "../api/client";
 
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin",
@@ -13,6 +15,30 @@ const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin",
 function saisonLisible(code) {
   const [a, m] = code.split("-");
   return `${MOIS[parseInt(m, 10) - 1]} ${a}`;
+}
+
+/** Barre de réussite par thème — même présentation que l'écran Statistiques,
+ *  pour qu'un profil consulté se lise exactement comme le sien. */
+function BarreTheme({ t, couleur }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+      <span style={{
+        fontFamily: FONT_BODY, fontWeight: 800, fontSize: 12.5, width: 110, flexShrink: 0,
+        color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {t.nom}
+      </span>
+      <span style={{ flex: 1, height: 8, background: COLORS.cardAlt, borderRadius: 4, overflow: "hidden" }}>
+        <span style={{ display: "block", height: "100%", width: `${t.pct}%`, background: couleur }} />
+      </span>
+      <span style={{
+        fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 12.5, color: COLORS.muted,
+        width: 60, textAlign: "right", flexShrink: 0,
+      }}>
+        {t.pct}% · {t.attempted}
+      </span>
+    </div>
+  );
 }
 
 /** Bloc de chiffre : une valeur, un libellé. */
@@ -61,6 +87,11 @@ export default function PublicProfile({ onNavigate, pseudo }) {
         .sort((a, b) => b.pct - a.pct)
     : [];
 
+  // Même découpage que l'écran Statistiques : les trois meilleurs, les trois
+  // moins bons, et rien entre les deux si le joueur a peu de thèmes.
+  const forts = themes.slice(0, 3);
+  const faibles = themes.length > 3 ? themes.slice(-3).reverse() : [];
+
   const membre = profil?.membre_depuis
     ? new Date(profil.membre_depuis).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
     : null;
@@ -82,6 +113,20 @@ export default function PublicProfile({ onNavigate, pseudo }) {
           {pseudo}
         </h2>
       </div>
+
+      {profil && (
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+          <Avatar face={profil.avatar_face} color={profil.avatar_color} size={58} />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 20, margin: 0, color: COLORS.text }}>
+              Niveau {profil.level}
+            </p>
+            <p style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 12.5, color: COLORS.muted, margin: "1px 0 0" }}>
+              {profil.xp_total.toLocaleString("fr-FR")} XP
+            </p>
+          </div>
+        </div>
+      )}
 
       {erreur && <p style={{ color: COLORS.danger, fontSize: 13 }}>{erreur}</p>}
       {!profil && !erreur && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement…</p>}
@@ -144,8 +189,8 @@ export default function PublicProfile({ onNavigate, pseudo }) {
 
           {/* Chiffres clés */}
           <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-            <Chiffre valeur={`N${profil.level}`} libelle="Niveau" />
-            <Chiffre valeur={profil.xp_total.toLocaleString("fr-FR")} libelle="XP" />
+            <Chiffre valeur={profil.rank_points.toLocaleString("fr-FR")} libelle="Points" />
+            <Chiffre valeur={profil.palmares.length} libelle="Saisons" />
             <Chiffre
               valeur={`${profil.achievements.length}/${profil.nb_achievements}`}
               libelle="Succès" couleur={COLORS.gold}
@@ -187,66 +232,81 @@ export default function PublicProfile({ onNavigate, pseudo }) {
             </>
           )}
 
-          {/* Succès obtenus */}
-          <p style={sectionLabel}>
-            Succès <span style={{ color: COLORS.chevron, fontWeight: 700 }}>
-              {profil.achievements.length}/{profil.nb_achievements}
-            </span>
-          </p>
-          {profil.achievements.length === 0 ? (
-            <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.5 }}>
-              Aucun succès débloqué pour l'instant.
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-              {profil.achievements.map((a) => (
-                <span
-                  key={a.code}
-                  title={a.description}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    background: tint(COLORS.gold, 9), border: `1px solid ${tint(COLORS.gold, 30)}`,
-                    borderRadius: 20, padding: "7px 12px",
-                    fontFamily: FONT_BODY, fontWeight: 800, fontSize: 12, color: COLORS.text,
-                  }}
-                >
-                  <Award size={13} color={COLORS.gold} />
-                  {a.titre}
-                </span>
-              ))}
-            </div>
-          )}
+          {/* Succès et thèmes : repliés, pour que le haut du profil reste lisible.
+              Dépliés, ils donnent le détail — le libellé seul ne dit pas ce
+              qu'il a fallu accomplir. */}
+          <div style={{ marginTop: 22 }}>
+            <Collapsible
+              title="Succès"
+              count={`${profil.achievements.length}/${profil.nb_achievements}`}
+            >
+              {profil.achievements.length === 0 ? (
+                <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.5 }}>
+                  Aucun succès débloqué pour l'instant.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {profil.achievements.map((a) => (
+                    <div key={a.code} style={{
+                      display: "flex", alignItems: "center", gap: 11, padding: "10px 12px",
+                      borderRadius: 14, background: tint(COLORS.gold, 7),
+                      border: `1px solid ${tint(COLORS.gold, 22)}`,
+                    }}>
+                      <span style={{
+                        width: 30, height: 30, borderRadius: 10, flexShrink: 0, background: rankGradient(RANKS[6]),
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <Award size={15} color="#fff" />
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.text }}>
+                          {a.titre}
+                        </span>
+                        <span style={{ display: "block", fontFamily: FONT_BODY, fontSize: 11.5, color: COLORS.muted, marginTop: 1, lineHeight: 1.35 }}>
+                          {a.description}
+                        </span>
+                      </span>
+                      <span style={{
+                        fontFamily: FONT_BODY, fontWeight: 800, fontSize: 10, letterSpacing: 0.8,
+                        textTransform: "uppercase", color: COLORS.muted, flexShrink: 0,
+                      }}>
+                        {a.categorie}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Collapsible>
 
-          {/* Thèmes */}
-          <p style={sectionLabel}>Ses thèmes</p>
-          {themes.length === 0 ? (
-            <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.5 }}>
-              Pas encore assez de parties classées pour dégager des tendances.
-            </p>
-          ) : (
-            themes.map((t, i) => (
-              <div key={t.nom} style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 9 }}>
-                <span style={{
-                  fontFamily: FONT_BODY, fontWeight: 800, fontSize: 12.5, width: 108, flexShrink: 0,
-                  color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {t.nom}
-                </span>
-                <span style={{ flex: 1, height: 8, background: COLORS.cardAlt, borderRadius: 4, overflow: "hidden" }}>
-                  <span style={{
-                    display: "block", height: "100%", width: `${t.pct}%`,
-                    background: i === 0 ? COLORS.success : i === themes.length - 1 ? COLORS.danger : COLORS.gold,
-                  }} />
-                </span>
-                <span style={{
-                  fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 12.5, color: COLORS.muted,
-                  width: 60, textAlign: "right", flexShrink: 0,
-                }}>
-                  {t.pct}% · {t.attempted}
-                </span>
-              </div>
-            ))
-          )}
+            <Collapsible title="Thèmes" count={themes.length || undefined}>
+              {themes.length === 0 ? (
+                <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.5 }}>
+                  Pas encore assez de parties classées pour dégager des tendances.
+                </p>
+              ) : (
+                <>
+                  {forts.length > 0 && (
+                    <>
+                      <p style={{ ...sectionLabel, display: "flex", alignItems: "center", gap: 6, marginTop: 0 }}>
+                        <TrendingUp size={13} color={COLORS.success} /> Ses points forts
+                      </p>
+                      {forts.map((t) => <BarreTheme key={t.nom} t={t} couleur={COLORS.success} />)}
+                    </>
+                  )}
+                  {faibles.length > 0 && (
+                    <>
+                      <p style={{ ...sectionLabel, display: "flex", alignItems: "center", gap: 6 }}>
+                        <TrendingDown size={13} color={COLORS.danger} /> À travailler
+                      </p>
+                      {faibles.map((t) => <BarreTheme key={t.nom} t={t} couleur={COLORS.danger} />)}
+                    </>
+                  )}
+                  {forts.length === 0 && faibles.length === 0 &&
+                    themes.map((t) => <BarreTheme key={t.nom} t={t} couleur={COLORS.gold} />)}
+                </>
+              )}
+            </Collapsible>
+          </div>
 
           {membre && (
             <p style={{

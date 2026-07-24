@@ -5,6 +5,7 @@ import {
   gradientText, tint, tierInfo, rankGradient,
 } from "./design/theme";
 import { iconeDuRang } from "./design/rankIcons";
+import Avatar from "./components/Avatar";
 import { useAuth } from "./auth/AuthContext";
 import { apiFetch } from "./api/client";
 
@@ -90,11 +91,15 @@ export default function Home({ onNavigate }) {
             padding: "14px 16px", marginBottom: 16, cursor: "pointer", animation: "sqrise .45s .05s both",
           }}
         >
-          <span style={{
-            width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: rankGradient(t.rank),
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <IconeRang size={21} color="#fff" />
+          <span style={{ position: "relative", flexShrink: 0 }}>
+            <Avatar face={user.avatar_face} color={user.avatar_color} size={46} />
+            <span style={{
+              position: "absolute", right: -3, bottom: -3, width: 20, height: 20, borderRadius: 7,
+              background: rankGradient(t.rank), boxShadow: `0 0 0 2.5px ${COLORS.card}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <IconeRang size={11} color="#fff" />
+            </span>
           </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

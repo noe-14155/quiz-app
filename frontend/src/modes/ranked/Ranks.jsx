@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Crown, ChevronRight, CalendarClock } from "lucide-react";
 import { iconeDuRang } from "../../design/rankIcons";
+import Avatar from "../../components/Avatar";
 import {
   cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tint, tierInfo, rankGradient, gradientText,
 } from "../../design/theme";
@@ -9,13 +10,12 @@ import { useAuth } from "../../auth/AuthContext";
 
 const MEDAILLES = ["#FFC94D", "#C3CBD3", "#D9A066"];
 
-/** Temps restant avant la remise à zéro, formulé simplement. */
-function resteLisible(saison) {
+/** Temps restant avant la remise à zéro, en version courte. */
+function resteCourt(saison) {
   const { jours_restants: j, heures_restantes: h } = saison;
-  if (j === 0 && h === 0) return "Nouvelle saison imminente";
-  if (j === 0) return `Fin de saison dans ${h} heure${h > 1 ? "s" : ""}`;
-  if (j === 1) return "Dernier jour de la saison";
-  return `Fin de saison dans ${j} jours`;
+  if (j === 0 && h === 0) return "Fin imminente";
+  if (j === 0) return `${h} h`;
+  return `${j} j`;
 }
 
 /**
@@ -47,16 +47,25 @@ function Marche({ joueur, position, moi, onClick }) {
         <Crown size={20} color={medaille} style={{ marginBottom: 4, animation: "sqfloaty 3s ease-in-out infinite" }} />
       )}
 
-      {/* Pastille du rang, posée sur la marche */}
+      {/* Avatar du joueur, cerclé de sa médaille, avec l'icône de son rang en
+          pastille : on identifie la personne ET son niveau d'un coup d'œil. */}
       <span style={{
-        width: premier ? 52 : 44, height: premier ? 52 : 44,
-        borderRadius: premier ? 17 : 14, flexShrink: 0,
-        background: rankGradient(t.rank),
-        boxShadow: `0 0 0 3px ${COLORS.bg}, 0 0 0 5px ${medaille}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        marginBottom: 8, animation: `sqpop .5s ${position * 0.08}s both`,
+        position: "relative", marginBottom: 8,
+        animation: `sqpop .5s ${position * 0.08}s both`,
       }}>
-        <IconeRang size={premier ? 24 : 20} color="#fff" />
+        <Avatar
+          face={joueur.avatar_face} color={joueur.avatar_color}
+          size={premier ? 54 : 46}
+          style={{ boxShadow: `0 0 0 3px ${COLORS.bg}, 0 0 0 5px ${medaille}` }}
+        />
+        <span style={{
+          position: "absolute", right: -4, bottom: -4,
+          width: premier ? 24 : 21, height: premier ? 24 : 21, borderRadius: 8,
+          background: rankGradient(t.rank), boxShadow: `0 0 0 2.5px ${COLORS.bg}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <IconeRang size={premier ? 13 : 11} color="#fff" />
+        </span>
       </span>
 
       <span style={{
@@ -125,11 +134,15 @@ function Ligne({ joueur, position, moi, onClick, dernier }) {
       }}>
         {position}
       </span>
-      <span style={{
-        width: 32, height: 32, borderRadius: 10, flexShrink: 0, background: rankGradient(t.rank),
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        <IconeRang size={16} color="#fff" />
+      <span style={{ position: "relative", flexShrink: 0 }}>
+        <Avatar face={joueur.avatar_face} color={joueur.avatar_color} size={34} />
+        <span style={{
+          position: "absolute", right: -3, bottom: -3, width: 17, height: 17, borderRadius: 6,
+          background: rankGradient(t.rank), boxShadow: `0 0 0 2px ${COLORS.bg}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <IconeRang size={9} color="#fff" />
+        </span>
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{
@@ -167,38 +180,31 @@ export default function Ranks({ onNavigate }) {
 
   return (
     <div style={cardWrap}>
-      <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 26, margin: "14px 0 4px", color: COLORS.text }}>
-        Classement
-      </h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "14px 0 4px" }}>
+        <h2 style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 26, margin: 0, color: COLORS.text }}>
+          Classement
+        </h2>
+        {/* Fin de saison : une pastille discrète suffit. L'information compte,
+            mais elle ne doit pas concurrencer le podium. */}
+        {data?.saison && (
+          <span
+            title={`Le classement repart de zéro le 1er du mois. Ton palmarès est conservé.`}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0,
+              background: COLORS.soft, borderRadius: 20, padding: "5px 11px",
+              fontFamily: FONT_BODY, fontWeight: 800, fontSize: 11.5, color: COLORS.muted,
+            }}
+          >
+            <CalendarClock size={12} />
+            {resteCourt(data.saison)}
+          </span>
+        )}
+      </div>
       <p style={{ fontSize: 13, color: COLORS.muted, margin: "0 0 22px" }}>
         {moi
           ? <>Tu es <b style={{ color: COLORS.gold }}>{moi.position}<sup>{moi.position === 1 ? "er" : "e"}</sup></b> sur {moi.total} joueur{moi.total > 1 ? "s" : ""}.</>
           : "Les dix meilleurs joueurs."}
       </p>
-
-      {/* Compte à rebours : le classement repart de zéro le 1er du mois. */}
-      {data?.saison && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 16,
-          background: tint(COLORS.accent2, 8), border: `1px solid ${tint(COLORS.accent2, 25)}`,
-          marginBottom: 20,
-        }}>
-          <span style={{
-            width: 34, height: 34, borderRadius: 11, flexShrink: 0, background: tint(COLORS.accent2, 16),
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <CalendarClock size={17} color={COLORS.accent2} />
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.text }}>
-              {resteLisible(data.saison)}
-            </span>
-            <span style={{ display: "block", fontFamily: FONT_BODY, fontSize: 11.5, color: COLORS.muted, marginTop: 1 }}>
-              Le classement repart de zéro le 1<sup>er</sup> du mois. Ton palmarès, lui, est conservé.
-            </span>
-          </span>
-        </div>
-      )}
 
       {erreur && <p style={{ color: COLORS.danger, fontSize: 13 }}>{erreur}</p>}
       {!data && !erreur && <p style={{ color: COLORS.muted, fontSize: 14 }}>Chargement…</p>}
@@ -247,6 +253,7 @@ export default function Ranks({ onNavigate }) {
       )}
 
       <p style={{ fontSize: 12, color: COLORS.muted, lineHeight: 1.5, marginTop: 22 }}>
+        Le classement repart de zéro le 1<sup>er</sup> de chaque mois ; ton palmarès, lui, est conservé.
         L'échelle complète des rangs se trouve dans le mode Classé.
       </p>
     </div>

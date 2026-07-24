@@ -3,6 +3,8 @@ import { LogOut, Sparkles, ChevronRight, Sun, Moon } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, gradient, rankGradient, sectionLabel, tint, ACCENT_OPTIONS } from "../design/theme";
 import { useThemeSettings } from "../design/ThemeContext";
 import { iconeDuRang } from "../design/rankIcons";
+import Avatar, { NB_VISAGES, COULEURS_AVATAR } from "../components/Avatar";
+import { apiFetch } from "../api/client";
 import { FEEDBACK, setFeedback } from "../design/feedback";
 import Button from "../components/Button";
 import { useAuth } from "../auth/AuthContext";
@@ -21,11 +23,14 @@ function ProfileBody({ profile }) {
 
   return (
     <>
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: 0, color: COLORS.text }}>
-          {profile.pseudo}
-        </p>
-        <p style={{ fontSize: 13, color: COLORS.muted, margin: "2px 0 0", fontWeight: 700 }}>Niveau {level}</p>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+        <Avatar face={profile.avatar_face} color={profile.avatar_color} size={58} />
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800, margin: 0, color: COLORS.text }}>
+            {profile.pseudo}
+          </p>
+          <p style={{ fontSize: 13, color: COLORS.muted, margin: "2px 0 0", fontWeight: 700 }}>Niveau {level}</p>
+        </div>
       </div>
 
       <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
@@ -115,9 +120,22 @@ function Section({ title, children, pad = "4px 16px" }) {
  * puis apparence et compte. Remplace l'ancien panneau de réglages en surimpression.
  */
 export function Profile({ screen, onNavigate }) {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   const { mode, accent, setMode, setAccent } = useThemeSettings();
   const [fb, setFb] = useState(FEEDBACK);
+  const [visage, setVisage] = useState(user?.avatar_face ?? 0);
+  const [couleur, setCouleur] = useState(user?.avatar_color ?? COULEURS_AVATAR[0]);
+
+  /** Aperçu immédiat, enregistrement en arrière-plan : le choix doit être
+   *  instantané, l'aller-retour réseau ne doit pas se voir. */
+  function majAvatar(face, color) {
+    setVisage(face);
+    setCouleur(color);
+    apiFetch("/api/profile/me/avatar", {
+      method: "PATCH",
+      body: JSON.stringify({ face, color }),
+    }).then(refreshProfile).catch(() => {});
+  }
 
   function majFeedback(patch) {
     setFeedback(patch);
@@ -168,6 +186,54 @@ export function Profile({ screen, onNavigate }) {
              onClick={() => onNavigate("stats")}>
           <ChevronRight size={18} color={COLORS.chevron} />
         </Row>
+      </Section>
+
+      <Section title="Mon avatar" pad="14px 16px">
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+          <Avatar face={visage} color={couleur} size={54} />
+          <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.45, margin: 0 }}>
+            Choisis une expression et une couleur. Ton avatar te suit au classement
+            et sur ton profil public.
+          </p>
+        </div>
+
+        <p style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 13, color: COLORS.text, margin: "0 0 9px" }}>
+          Expression
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginBottom: 16 }}>
+          {Array.from({ length: NB_VISAGES }, (_, i) => (
+            <button
+              key={i}
+              onClick={() => majAvatar(i, couleur)}
+              aria-label={`Visage ${i + 1}`}
+              style={{
+                background: "none", border: "none", padding: 0, cursor: "pointer",
+                borderRadius: 15, outline: visage === i ? `3px solid ${COLORS.text}` : "3px solid transparent",
+                transform: visage === i ? "scale(1.06)" : "none", transition: "transform .15s",
+              }}
+            >
+              <Avatar face={i} color={couleur} size={44} />
+            </button>
+          ))}
+        </div>
+
+        <p style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 13, color: COLORS.text, margin: "0 0 9px" }}>
+          Couleur
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 9 }}>
+          {COULEURS_AVATAR.map((c) => (
+            <button
+              key={c}
+              onClick={() => majAvatar(visage, c)}
+              aria-label={`Couleur ${c}`}
+              style={{
+                width: 36, height: 36, borderRadius: 12, background: c, cursor: "pointer",
+                border: couleur === c ? `3px solid ${COLORS.text}` : "3px solid transparent",
+                transform: couleur === c ? "scale(1.08)" : "none", transition: "transform .15s",
+              }}
+            />
+          ))}
+        </div>
       </Section>
 
       <Section title="Apparence" pad="14px 16px">
