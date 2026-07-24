@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.auth.router import get_current_user
 from app.core.db import get_connection
@@ -24,7 +25,47 @@ def _build_profile(user: dict):
         "rank_palier": tier_info["palier"],
         "rank_progress": rank_config.progress_in_tier(user["rank_points"], cfg),
         "stats_by_theme": stats.compute_theme_stats(user["id"]),
+        # L'avatar suit le joueur partout : profil, classement, podium.
+        "avatar_face": user["avatar_face"] if "avatar_face" in user.keys() else 0,
+        "avatar_color": user["avatar_color"] if "avatar_color" in user.keys() else "#7C4DFF",
     }
+
+
+NB_VISAGES = 8
+COULEURS_AVATAR = [
+    "#7C4DFF", "#FF4D9D", "#FF8A3D", "#12B981",
+    "#38BDF8", "#F43F5E", "#FFC94D", "#8A93A5",
+]
+
+
+class AvatarPayload(BaseModel):
+    face: int
+    color: str
+
+
+@router.patch("/me/avatar")
+def set_avatar(payload: AvatarPayload, user=Depends(get_current_user)):
+    """Choix de l'avatar : une expression parmi NB_VISAGES, une couleur parmi la
+    palette. On valide côté serveur pour qu'aucune valeur fantaisiste ne se
+    retrouve en base."""
+    if not (0 <= payload.face < NB_VISAGES):
+        raise HTTPException(status_code=422, detail="Visage inconnu")
+    if payload.color not in COULEURS_AVATAR:
+        raise HTTPException(status_code=422, detail="Couleur inconnue")
+    conn = get_connection()
+    conn.execute(
+        "UPDATE users SET avatar_face = ?, avatar_color = ? WHERE id = ?",
+        (payload.face, payload.color, user["id"]),
+    )
+    conn.commit()
+    conn.close()
+    return {"avatar_face": payload.face, "avatar_color": payload.color}
+
+
+@router.get("/avatars")
+def avatars():
+    """Choix disponibles, pour que le client n'ait rien à deviner."""
+    return {"faces": NB_VISAGES, "colors": COULEURS_AVATAR}
 
 
 @router.get("/me")
@@ -54,8 +95,8 @@ def public_profile(pseudo: str):
     progression, palmarès des saisons passées et succès obtenus."""
     conn = get_connection()
     u = conn.execute(
-        "SELECT id, pseudo, xp_total, rank_tier, rank_points, peak_points, best_tier_ever, created_at "
-        "FROM users WHERE pseudo = ?",
+        "SELECT id, pseudo, xp_total, rank_tier, rank_points, peak_points, best_tier_ever, "
+        "       created_at, avatar_face, avatar_color FROM users WHERE pseudo = ?",
         (pseudo,),
     ).fetchone()
     conn.close()

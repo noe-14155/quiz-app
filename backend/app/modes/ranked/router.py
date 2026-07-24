@@ -250,7 +250,7 @@ def leaderboard(limit: int = 10, user=Depends(get_current_user_optional)):
     cfg = get_settings()
     conn = get_connection()
     rows = conn.execute(
-        "SELECT pseudo, rank_points FROM users ORDER BY rank_points DESC LIMIT ?",
+        "SELECT pseudo, rank_points, avatar_face, avatar_color FROM users ORDER BY rank_points DESC LIMIT ?",
         (limit,),
     ).fetchall()
     conn.close()
@@ -272,6 +272,8 @@ def leaderboard(limit: int = 10, user=Depends(get_current_user_optional)):
         conn2.close()
         moi = {
             "pseudo": user["pseudo"],
+            "avatar_face": user["avatar_face"],
+            "avatar_color": user["avatar_color"],
             "rank_points": user["rank_points"],
             "rank_tier": rank_config.tier_from_points(user["rank_points"], cfg),
             "position": devant + 1,

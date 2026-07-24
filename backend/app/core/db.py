@@ -267,6 +267,16 @@ def init_schema():
         conn.execute("ALTER TABLE users ADD COLUMN last_decay_date TEXT")
         conn.commit()
 
+    # Migration : avatar (une expression de visage sur un fond de couleur).
+    # Deux colonnes plutôt qu'une chaîne composite : c'est plus simple à lire,
+    # à valider et à faire évoluer si on ajoute des visages.
+    if "avatar_face" not in existing_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN avatar_face INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+    if "avatar_color" not in existing_columns:
+        conn.execute("ALTER TABLE users ADD COLUMN avatar_color TEXT NOT NULL DEFAULT '#7C4DFF'")
+        conn.commit()
+
     # Migration : sommet atteint pendant la saison en cours, et meilleur rang
     # jamais atteint toutes saisons confondues (pour le palmarès du profil).
     if "peak_points" not in existing_columns:
