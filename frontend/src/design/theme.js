@@ -166,13 +166,13 @@ export const sectionLabel = {
  * ------------------------------------------------------------------------- */
 
 export const RANKS = [
-  { name: "Figurant", color: "#AEB4C4", color2: "#8A93A5", min: 0, max: 199 },
-  { name: "Candidat", color: "#5FC9F8", color2: "#2AA9E0", min: 200, max: 499 },
-  { name: "Qualifié", color: "#3DDCA0", color2: "#12B981", min: 500, max: 999 },
-  { name: "Finaliste", color: "#FFB25C", color2: "#F58A1F", min: 1000, max: 1799 },
+  { name: "Novice", color: "#AEB4C4", color2: "#8A93A5", min: 0, max: 199 },
+  { name: "Apprenti", color: "#5FC9F8", color2: "#2AA9E0", min: 200, max: 499 },
+  { name: "Confirmé", color: "#3DDCA0", color2: "#12B981", min: 500, max: 999 },
+  { name: "Expert", color: "#FFB25C", color2: "#F58A1F", min: 1000, max: 1799 },
   { name: "Champion", color: "#FF7FAE", color2: "#F0417C", min: 1800, max: 2999 },
-  { name: "Maître de Midi", color: "#A98BFF", color2: "#7C4DFF", min: 3000, max: 4999 },
-  { name: "Hall of Fame", color: "#FFD65C", color2: "#E0A21A", min: 5000, max: null },
+  { name: "Maître", color: "#A98BFF", color2: "#7C4DFF", min: 3000, max: 4999 },
+  { name: "Légende", color: "#FFD65C", color2: "#E0A21A", min: 5000, max: null },
 ];
 export const PALIER_LABELS = ["III", "II", "I"];
 const TIERS_PER_RANK = 3;

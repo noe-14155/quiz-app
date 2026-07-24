@@ -12,7 +12,7 @@ import BigScore from "../../components/BigScore";
 import PageTitle from "../../components/PageTitle";
 import Collapsible from "../../components/Collapsible";
 import RankLadder from "../../components/RankLadder";
-import { iconeDuRang } from "../../design/rankIcons";
+import RankEmblem from "../../design/rankEmblems";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 
@@ -22,7 +22,6 @@ const DEFAULT_TIME_PER_QUESTION = 15;
 
 function RankBadge({ tier, points, progress }) {
   const t = tierInfo(tier);
-  const IconeRang = iconeDuRang(t.rankIndex);
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 14, background: COLORS.card,
@@ -32,7 +31,7 @@ function RankBadge({ tier, points, progress }) {
         width: 48, height: 48, borderRadius: 15, background: rankGradient(t.rank), flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <IconeRang size={22} color="#fff" />
+        <RankEmblem rangIndex={t.rankIndex} size={24} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

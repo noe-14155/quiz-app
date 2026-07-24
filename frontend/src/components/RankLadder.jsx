@@ -1,6 +1,6 @@
 import { Lock, Check } from "lucide-react";
 import { COLORS, FONT_DISPLAY, FONT_BODY, rankGradient, rankRange, tint } from "../design/theme";
-import { iconeDuRang } from "../design/rankIcons";
+import RankEmblem from "../design/rankEmblems";
 
 /**
  * « L'échelle » : les rangs du plus haut au plus bas, reliés par un trait
@@ -21,7 +21,6 @@ export default function RankLadder({ ladder, ranks }) {
 
       {rows.map((row) => {
         const meta = ranks.find((r) => r.name === row.rank) || ranks[0];
-        const Icon = iconeDuRang(ranks.indexOf(meta));
         const isCurrent = row.state === "current";
         const isLocked = row.state === "locked";
 
@@ -40,7 +39,7 @@ export default function RankLadder({ ladder, ranks }) {
               background: isLocked ? COLORS.soft : rankGradient(meta),
               boxShadow: isCurrent ? `0 0 0 3px ${COLORS.bg}, 0 0 0 5px ${meta.color2 || meta.color}` : "none",
             }}>
-              <Icon size={18} color={isLocked ? COLORS.muted : "#fff"} />
+              <RankEmblem rangIndex={ranks.indexOf(meta)} size={20} color={isLocked ? COLORS.muted : "#fff"} />
             </span>
 
             <div style={{

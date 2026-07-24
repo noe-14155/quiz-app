@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LogOut, Sparkles, ChevronRight, Sun, Moon } from "lucide-react";
 import { cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tierInfo, gradient, rankGradient, sectionLabel, tint, ACCENT_OPTIONS } from "../design/theme";
 import { useThemeSettings } from "../design/ThemeContext";
-import { iconeDuRang } from "../design/rankIcons";
+import RankEmblem from "../design/rankEmblems";
 import Avatar, { NB_VISAGES, COULEURS_AVATAR } from "../components/Avatar";
 import { apiFetch } from "../api/client";
 import { FEEDBACK, setFeedback } from "../design/feedback";
@@ -20,7 +20,6 @@ function ProfileBody({ profile }) {
   const xpNext = xpForLevel(level + 1);
   const progress = ((profile.xp_total - xpCurrent) / (xpNext - xpCurrent)) * 100;
   const t = tierInfo(profile.rank_tier);
-  const IconeRang = iconeDuRang(t.rankIndex);
 
   return (
     <>
@@ -47,7 +46,7 @@ function ProfileBody({ profile }) {
           width: 48, height: 48, borderRadius: 15, background: rankGradient(t.rank), flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <IconeRang size={22} color="#fff" />
+          <RankEmblem rangIndex={t.rankIndex} size={24} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

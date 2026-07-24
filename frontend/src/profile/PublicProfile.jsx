@@ -4,7 +4,7 @@ import {
   cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, sectionLabel, tint,
   tierInfo, rankGradient, RANKS,
 } from "../design/theme";
-import { iconeDuRang } from "../design/rankIcons";
+import RankEmblem from "../design/rankEmblems";
 import Collapsible from "../components/Collapsible";
 import Avatar from "../components/Avatar";
 import { apiFetch } from "../api/client";
@@ -78,8 +78,6 @@ export default function PublicProfile({ onNavigate, pseudo }) {
 
   const actuel = profil ? tierInfo(profil.rank_tier) : null;
   const record = profil ? tierInfo(profil.best_tier_ever) : null;
-  const IconeActuel = actuel ? iconeDuRang(actuel.rankIndex) : null;
-  const IconeRecord = record ? iconeDuRang(record.rankIndex) : null;
 
   const themes = profil
     ? Object.entries(profil.stats_by_theme || {})
@@ -144,7 +142,7 @@ export default function PublicProfile({ onNavigate, pseudo }) {
               background: "rgba(255,255,255,.22)", boxShadow: "inset 0 0 0 2px rgba(255,255,255,.35)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <IconeActuel size={24} color="#fff" />
+              <RankEmblem rangIndex={actuel.rankIndex} size={26} />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{
@@ -173,7 +171,7 @@ export default function PublicProfile({ onNavigate, pseudo }) {
                 width: 34, height: 34, borderRadius: 11, flexShrink: 0, background: rankGradient(record.rank),
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                <IconeRecord size={17} color="#fff" />
+                <RankEmblem rangIndex={record.rankIndex} size={18} />
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontFamily: FONT_BODY, fontWeight: 800, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color: COLORS.muted }}>
@@ -203,7 +201,6 @@ export default function PublicProfile({ onNavigate, pseudo }) {
               <p style={sectionLabel}>Saisons précédentes</p>
               {profil.palmares.map((s) => {
                 const t = tierInfo(s.best_tier);
-                const Icone = iconeDuRang(t.rankIndex);
                 return (
                   <div key={s.season} style={{
                     display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
@@ -213,7 +210,7 @@ export default function PublicProfile({ onNavigate, pseudo }) {
                       width: 30, height: 30, borderRadius: 10, flexShrink: 0, background: rankGradient(t.rank),
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
-                      <Icone size={15} color="#fff" />
+                      <RankEmblem rangIndex={t.rankIndex} size={16} />
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 14, color: COLORS.text, textTransform: "capitalize" }}>
