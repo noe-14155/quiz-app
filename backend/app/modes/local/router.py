@@ -15,7 +15,17 @@ router = APIRouter(prefix="/api/local", tags=["local"])
 
 
 def _parse_exclude(exclude_ids: Optional[str]):
-    return [int(x) for x in exclude_ids.split(",")] if exclude_ids else []
+    """Liste d'identifiants à exclure, tolérante aux valeurs vides ou mal
+    formées : un paramètre d'URL bricolé renvoyait une erreur 500 alors qu'il
+    suffit de l'ignorer."""
+    if not exclude_ids:
+        return []
+    out = []
+    for morceau in exclude_ids.split(","):
+        morceau = morceau.strip()
+        if morceau.isdigit():
+            out.append(int(morceau))
+    return out
 
 
 @router.get("/games")

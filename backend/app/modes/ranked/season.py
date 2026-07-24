@@ -11,19 +11,20 @@ mémoire qui donne sa valeur au palmarès affiché sur le profil.
 """
 from datetime import date, datetime, timezone
 
+from app.core import dates
 from app.core.db import get_connection
 
 CLE_SAISON = "ranked_season"
 
 
 def saison_courante(aujourdhui: date = None) -> str:
-    d = aujourdhui or date.today()
+    d = aujourdhui or dates.aujourdhui()
     return f"{d.year:04d}-{d.month:02d}"
 
 
 def fin_de_saison(aujourdhui: date = None) -> date:
     """Premier jour du mois suivant : l'instant de la remise à zéro."""
-    d = aujourdhui or date.today()
+    d = aujourdhui or dates.aujourdhui()
     return date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
 
 
@@ -96,7 +97,7 @@ def verifier_et_reinitialiser(aujourdhui: date = None):
 def info(aujourdhui: date = None):
     """Informations de saison pour l'affichage : identifiant, date de fin, et
     temps restant en jours/heures."""
-    d = aujourdhui or date.today()
+    d = aujourdhui or dates.aujourdhui()
     fin = fin_de_saison(d)
     maintenant = datetime.now(timezone.utc)
     limite = datetime(fin.year, fin.month, fin.day, tzinfo=timezone.utc)

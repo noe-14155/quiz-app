@@ -9,6 +9,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 
+from app.core import dates
 from app.core.db import get_connection
 from app.questions import service as questions_service
 
@@ -18,7 +19,8 @@ DIFFICULTY_CURVE = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
 
 
 def today_str() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    """Jour de référence, fuseau de l'application (voir core/dates.py)."""
+    return dates.aujourdhui_str()
 
 
 def _seed_for(date_str: str, salt: str) -> int:

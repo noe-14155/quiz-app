@@ -1,9 +1,59 @@
 import csv
+import logging
 import os
 import random
 
 from app.core.config import CSV_PATH, DATA_DIR
 from app.core.db import get_connection
+
+logger = logging.getLogger("quiz")
+
+
+def _lire_csv(chemin: str):
+    """Lit le CSV et renvoie les lignes prêtes à insérer.
+
+    L'identifiant vient de la COLONNE `id` du fichier, jamais du numéro de
+    ligne. C'est la seule façon de garder un identifiant stable : l'historique
+    des joueurs (`question_results`), les statistiques de calibration
+    (`question_stats`) et les signalements (`question_reports`) pointent vers
+    ces identifiants. Avec un identifiant dérivé du rang de la ligne, insérer
+    une question au milieu du fichier décalait silencieusement tout
+    l'historique — un joueur se voyait attribuer des réponses à des questions
+    qu'il n'avait jamais vues.
+
+    Les lignes inexploitables (identifiant absent, en double, difficulté ou
+    bonne réponse hors bornes) sont IGNORÉES plutôt que corrigées au jugé :
+    mieux vaut une question de moins qu'une question fausse. Le compte est
+    journalisé pour qu'un problème de fichier soit visible dans les logs.
+    """
+    rows, vus, rejets = [], set(), []
+    with open(chemin, encoding="utf-8-sig") as f:
+        for numero, r in enumerate(csv.DictReader(f), start=2):  # 2 = 1re ligne de données
+            try:
+                qid = int(str(r["id"]).strip())
+                bonne = int(str(r["bonne_reponse"]).strip())
+                difficulte = int(str(r["difficulte"]).strip())
+                choix = [r["reponse_1"], r["reponse_2"], r["reponse_3"], r["reponse_4"]]
+                if not r["question"].strip() or not all(c.strip() for c in choix):
+                    raise ValueError("question ou réponse vide")
+                if qid <= 0 or qid in vus:
+                    raise ValueError("identifiant absent ou en double")
+                if not 1 <= bonne <= 4:
+                    raise ValueError("bonne_reponse hors de 1-4")
+                if not 1 <= difficulte <= 5:
+                    raise ValueError("difficulte hors de 1-5")
+            except (KeyError, TypeError, ValueError) as e:
+                rejets.append(f"ligne {numero} ({e})")
+                continue
+            vus.add(qid)
+            rows.append((qid, r["theme"], r["question"], *choix, bonne,
+                         r.get("explication") or "", difficulte))
+
+    if rejets:
+        logger.warning("questions.csv : %d ligne(s) ignorée(s) — %s",
+                       len(rejets), ", ".join(rejets[:10]))
+    logger.info("questions.csv : %d question(s) importée(s)", len(rows))
+    return rows
 
 
 def import_questions_from_csv():
@@ -32,16 +82,7 @@ def import_questions_from_csv():
         )
     """)
     if os.path.exists(CSV_PATH):
-        with open(CSV_PATH, encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            rows = [
-                (
-                    i + 1, r["theme"], r["question"], r["reponse_1"], r["reponse_2"],
-                    r["reponse_3"], r["reponse_4"], int(r["bonne_reponse"]),
-                    r["explication"], int(r["difficulte"]),
-                )
-                for i, r in enumerate(reader)
-            ]
+        rows = _lire_csv(CSV_PATH)
         cur.executemany(
             "INSERT INTO questions "
             "(id, theme, question, reponse_1, reponse_2, reponse_3, reponse_4, bonne_reponse, explication, difficulte) "

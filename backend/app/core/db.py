@@ -203,6 +203,47 @@ def init_schema():
             PRIMARY KEY (user_id, question_id)
         );
 
+        -- Mode multi en temps réel. Trois tables, et un seul champ mutable
+        -- dans toute la partie : multi_parties.started_at. Tout le reste de
+        -- l'état (question en cours, phase, temps restant) se DÉDUIT de cet
+        -- horodatage — voir modes/multi/service.py. Le score lui-même n'est
+        -- stocké nulle part : il se recalcule par une somme sur multi_reponses.
+        CREATE TABLE IF NOT EXISTS multi_parties (
+            code TEXT PRIMARY KEY,
+            hote TEXT NOT NULL,
+            questions_data TEXT NOT NULL,
+            nb_questions INTEGER NOT NULL,
+            duree_question INTEGER NOT NULL,
+            duree_reveal INTEGER NOT NULL,
+            started_at TEXT,
+            xp_versee INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS multi_joueurs (
+            code TEXT NOT NULL,
+            pseudo TEXT NOT NULL,
+            user_id INTEGER,
+            avatar_face INTEGER,
+            avatar_color TEXT,
+            rejoint_at TEXT NOT NULL,
+            PRIMARY KEY (code, pseudo)
+        );
+
+        -- Une réponse = une ligne à elle seule. Deux joueurs ne peuvent pas
+        -- écrire au même endroit, donc aucune écriture concurrente possible.
+        CREATE TABLE IF NOT EXISTS multi_reponses (
+            code TEXT NOT NULL,
+            question_index INTEGER NOT NULL,
+            pseudo TEXT NOT NULL,
+            choix INTEGER NOT NULL,
+            ms INTEGER NOT NULL,
+            juste INTEGER NOT NULL DEFAULT 0,
+            points INTEGER NOT NULL DEFAULT 0,
+            answered_at TEXT NOT NULL,
+            PRIMARY KEY (code, question_index, pseudo)
+        );
+
         CREATE TABLE IF NOT EXISTS multi_rooms (
             code TEXT PRIMARY KEY,
             host_name TEXT NOT NULL,
@@ -341,6 +382,8 @@ def create_indexes():
         CREATE INDEX IF NOT EXISTS idx_enigme_pseudo ON enigme_attempts(pseudo);
         CREATE INDEX IF NOT EXISTS idx_achievements_user ON achievements(user_id);
         CREATE INDEX IF NOT EXISTS idx_reports_status ON question_reports(status);
+        CREATE INDEX IF NOT EXISTS idx_multi_joueurs ON multi_joueurs(pseudo);
+        CREATE INDEX IF NOT EXISTS idx_multi_reponses ON multi_reponses(code, question_index);
     """)
     conn.commit()
     conn.close()

@@ -1,3 +1,7 @@
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 bcrypt==4.1.3
+# Base des fuseaux horaires en pur Python : garantit que Europe/Paris est
+# reconnu même si l'image de base ne fournit pas la base système (voir
+# app/core/dates.py, qui retombe sinon silencieusement sur l'UTC).
+tzdata==2026.3

@@ -24,7 +24,8 @@ EVENTS = {
     "daily_start": "Défi du jour",
     "survie_start": "Partie survie",
     "chrono_start": "Contre-la-montre",
-    "duel_start": "Duel",
+    "multi_start": "Partie multi",
+    "duel_start": "Duel (mode retiré)",  # conservé : les lignes d'avant existent encore
     "enigme_start": "Énigme du jour",
 }
 

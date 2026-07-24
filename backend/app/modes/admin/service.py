@@ -1,6 +1,3 @@
-import json
-from datetime import datetime, timezone
-
 from app.core.config import ADMIN_BOOTSTRAP_SECRET
 from app.core.db import get_connection
 from app.profile.activity import EVENTS as EVENT_LABELS
@@ -16,11 +13,13 @@ DEFAULT_SETTINGS = {
     "mode_local_enabled": "1",
     "mode_daily_enabled": "1",
     "mode_arcade_enabled": "1",
-    "mode_duel_enabled": "1",
+    "mode_multi_enabled": "1",
     "mode_enigme_enabled": "1",
 }
 
-MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled", "mode_daily_enabled", "mode_arcade_enabled", "mode_duel_enabled", "mode_enigme_enabled"]
+MODE_KEYS = ["mode_chill_enabled", "mode_ranked_enabled", "mode_local_enabled",
+             "mode_daily_enabled", "mode_arcade_enabled", "mode_multi_enabled",
+             "mode_enigme_enabled"]
 
 
 # Cache mémoire des réglages : is_mode_enabled() est appelé sur CHAQUE requête
@@ -84,20 +83,61 @@ def list_users(limit: int = 100, offset: int = 0):
     return {"users": users, "total": total}
 
 
+# Tables rattachées à un compte. Deux familles, parce que les modes
+# quotidiens (défi, énigme, duel, arcade) identifient le joueur par son PSEUDO
+# et non par son identifiant : oublier la seconde famille laissait des traces
+# derrière un compte supprimé, et un nouveau venu qui reprenait le pseudo libéré
+# héritait de la série, des records et des duels de son prédécesseur.
+_TABLES_PAR_USER_ID = [
+    "question_results", "parties", "achievements", "rank_history",
+    "season_history", "arcade_records", "arcade_daily",
+]
+_TABLES_PAR_PSEUDO = [
+    "daily_attempts", "enigme_attempts", "multi_joueurs", "multi_reponses",
+]
+
+
+def _purger(conn, user_id: int, pseudo: str, garder_le_compte: bool):
+    for table in _TABLES_PAR_USER_ID:
+        conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+    if pseudo:
+        for table in _TABLES_PAR_PSEUDO:
+            conn.execute(f"DELETE FROM {table} WHERE pseudo = ?", (pseudo,))
+        conn.execute("DELETE FROM multi_parties WHERE hote = ?", (pseudo,))
+    if not garder_le_compte:
+        # Le journal d'activité n'est effacé qu'à la SUPPRESSION : une remise à
+        # zéro ne doit pas amputer les statistiques de fréquentation, qui sont
+        # une donnée du site et non une donnée du joueur.
+        conn.execute("DELETE FROM activity_log WHERE user_id = ? OR pseudo = ?", (user_id, pseudo))
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+
+def _pseudo_de(conn, user_id: int):
+    row = conn.execute("SELECT pseudo FROM users WHERE id = ?", (user_id,)).fetchone()
+    return row["pseudo"] if row else None
+
+
 def reset_user(user_id: int):
+    """Remet le compte à zéro sans le supprimer : progression, historique et
+    succès repartent de rien, le pseudo et le mot de passe sont conservés."""
     conn = get_connection()
-    conn.execute("UPDATE users SET xp_total = 0, rank_tier = 0, rank_points = 0 WHERE id = ?", (user_id,))
-    conn.execute("DELETE FROM question_results WHERE user_id = ?", (user_id,))
+    pseudo = _pseudo_de(conn, user_id)
+    conn.execute(
+        "UPDATE users SET xp_total = 0, rank_tier = 0, rank_points = 0, "
+        "peak_points = 0, best_tier_ever = 0, last_decay_date = NULL WHERE id = ?",
+        (user_id,),
+    )
+    _purger(conn, user_id, pseudo, garder_le_compte=True)
     conn.commit()
     conn.close()
 
 
 def delete_user(user_id: int):
+    """Supprime le compte ET tout ce qui s'y rattache."""
     conn = get_connection()
-    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
-    conn.execute("DELETE FROM question_results WHERE user_id = ?", (user_id,))
-    conn.execute("DELETE FROM parties WHERE user_id = ?", (user_id,))
+    pseudo = _pseudo_de(conn, user_id)
+    _purger(conn, user_id, pseudo, garder_le_compte=False)
     conn.commit()
     conn.close()
 

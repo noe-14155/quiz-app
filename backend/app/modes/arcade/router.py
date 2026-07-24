@@ -15,11 +15,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.auth.router import get_current_user_optional
+from app.core import dates
 from app.core.db import get_connection
 from app.modes.admin.service import is_mode_enabled
 from app.questions import service as questions_service
 from app.profile.activity import log_event
-from app.profile.xp import xp_for_difficulty, award_xp
+from app.profile.xp import award_xp
 
 router = APIRouter(prefix="/api/arcade", tags=["arcade"])
 
@@ -99,9 +100,9 @@ def finish(payload: ArcadeResult, user=Depends(get_current_user_optional)):
     # Meilleur score DU JOUR : c'est ce qui alimente le classement quotidien.
     # Un joueur peut rejouer autant qu'il veut, seul son meilleur essai compte.
     conn.execute(
-        "INSERT INTO arcade_daily (date, user_id, pseudo, mode, score) VALUES (date('now'),?,?,?,?) "
+        "INSERT INTO arcade_daily (date, user_id, pseudo, mode, score) VALUES (?,?,?,?,?) "
         "ON CONFLICT(date, user_id, mode) DO UPDATE SET score = MAX(score, excluded.score)",
-        (user["id"], user["pseudo"], payload.mode, payload.score),
+        (dates.aujourdhui_str(), user["id"], user["pseudo"], payload.mode, payload.score),
     )
     ligne = conn.execute(
         "SELECT score FROM arcade_records WHERE user_id = ? AND mode = ?",
@@ -109,12 +110,13 @@ def finish(payload: ArcadeResult, user=Depends(get_current_user_optional)):
     ).fetchone()
     ancien = ligne["score"] if ligne else 0
     nouveau = payload.score > ancien
-    if True:
-        conn.execute(
-            "INSERT INTO arcade_records (user_id, pseudo, mode, score, created_at) VALUES (?,?,?,?,datetime('now')) "
-            "ON CONFLICT(user_id, mode) DO UPDATE SET score = excluded.score, created_at = excluded.created_at",
-            (user["id"], user["pseudo"], payload.mode, max(ancien, payload.score)),
-        )
+    # On réécrit toujours la ligne : `MAX(ancien, score)` garantit qu'un moins
+    # bon essai n'écrase jamais le record, et la date suit le meilleur score.
+    conn.execute(
+        "INSERT INTO arcade_records (user_id, pseudo, mode, score, created_at) VALUES (?,?,?,?,?) "
+        "ON CONFLICT(user_id, mode) DO UPDATE SET score = excluded.score, created_at = excluded.created_at",
+        (user["id"], user["pseudo"], payload.mode, max(ancien, payload.score), dates.horodatage()),
+    )
     conn.commit()
     conn.close()
 
@@ -135,9 +137,9 @@ def records(user=Depends(get_current_user_optional)):
     out = {}
     for code in MODES:
         top_jour = conn.execute(
-            "SELECT pseudo, score FROM arcade_daily WHERE date = date('now') AND mode = ? "
+            "SELECT pseudo, score FROM arcade_daily WHERE date = ? AND mode = ? "
             "ORDER BY score DESC LIMIT 5",
-            (code,),
+            (dates.aujourdhui_str(), code),
         ).fetchall()
         top = conn.execute(
             "SELECT pseudo, score FROM arcade_records WHERE mode = ? ORDER BY score DESC LIMIT 5",
@@ -151,8 +153,8 @@ def records(user=Depends(get_current_user_optional)):
             ).fetchone()
             perso = r["score"] if r else 0
             rj = conn.execute(
-                "SELECT score FROM arcade_daily WHERE date = date('now') AND user_id = ? AND mode = ?",
-                (user["id"], code),
+                "SELECT score FROM arcade_daily WHERE date = ? AND user_id = ? AND mode = ?",
+                (dates.aujourdhui_str(), user["id"], code),
             ).fetchone()
             perso_jour = rj["score"] if rj else 0
         out[code] = {

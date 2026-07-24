@@ -6,6 +6,7 @@ Champion III. Modèle "rattrapage" : pas de tâche planifiée.
 """
 from datetime import date
 
+from app.core import dates
 from app.core.db import get_connection
 from app.modes.ranked import rank_config
 from app.modes.admin.service import get_settings
@@ -15,7 +16,7 @@ def apply_daily_decay(user_id: int, rank_points: int, last_decay_date: str):
     """Retourne le rank_points à jour après application de la perte quotidienne.
     Met à jour la base si nécessaire (points + date du jour)."""
     cfg = get_settings()
-    today = date.today().isoformat()
+    today = dates.aujourdhui_str()
     floor = rank_config.diamant_floor_points(cfg)
 
     # En dessous de Champion III : rien à faire, mais on garde la date à jour pour

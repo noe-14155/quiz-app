@@ -15,6 +15,7 @@ import re
 import unicodedata
 from datetime import date, datetime, timezone
 
+from app.core import dates
 from app.core.config import DATA_DIR
 from app.core.db import get_connection
 
@@ -64,7 +65,8 @@ def charger():
 
 
 def today_str():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    """Même jour de référence que les autres modes quotidiens."""
+    return dates.aujourdhui_str()
 
 
 def enigme_du_jour(date_str: str = None):

@@ -127,8 +127,13 @@ def my_stats(user=Depends(get_current_user)):
 
 
 @router.get("/{pseudo}")
-def public_profile(pseudo: str):
-    """Profil public, consultable depuis le classement en cliquant sur un joueur."""
+def profil_public_resume(pseudo: str):
+    """Version courte du profil public (progression seule).
+
+    Nom distinct de `public_profile` ci-dessus : les deux routes étaient bien
+    enregistrées, mais la seconde définition masquait la première dans le
+    module, ce qui rendait la première introuvable pour les tests et les
+    imports."""
     conn = get_connection()
     row = conn.execute("SELECT * FROM users WHERE pseudo = ?", (pseudo,)).fetchone()
     conn.close()

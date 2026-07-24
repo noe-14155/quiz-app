@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.auth.router import get_current_user_optional
-from app.questions import service as questions_service
 from app.modes.daily import service as daily_service
 from app.modes.admin.service import is_mode_enabled
 from app.profile.xp import xp_for_difficulty, award_xp

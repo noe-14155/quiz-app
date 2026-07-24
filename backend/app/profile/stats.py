@@ -1,5 +1,6 @@
 import math
 
+from app.core import dates
 from app.core.db import get_connection
 
 
@@ -54,9 +55,9 @@ def releve_du_jour(user_id: int, points: int):
     try:
         conn = get_connection()
         conn.execute(
-            "INSERT INTO rank_history (user_id, date, points) VALUES (?, date('now'), ?) "
+            "INSERT INTO rank_history (user_id, date, points) VALUES (?, ?, ?) "
             "ON CONFLICT(user_id, date) DO UPDATE SET points = excluded.points",
-            (user_id, points),
+            (user_id, dates.aujourdhui_str(), points),
         )
         conn.commit()
         conn.close()

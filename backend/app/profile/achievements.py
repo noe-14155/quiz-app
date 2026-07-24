@@ -8,9 +8,12 @@ enregistrées — aucun compteur supplémentaire à maintenir.
 Ajouter un succès = ajouter une entrée dans CATALOGUE et la règle correspondante
 dans `evaluer`. Rien d'autre à toucher.
 """
+import logging
 from datetime import datetime, timezone
 
 from app.core.db import get_connection
+
+logger = logging.getLogger("quiz")
 
 CATALOGUE = [
     # code,             titre,                 description,                                   catégorie
@@ -42,8 +45,10 @@ CATALOGUE = [
     ("chrono_35",        "Foudroyant",          "35 bonnes réponses au contre-la-montre",      "Performance"),
     ("daily_parfait_5",  "Métronome",           "Cinq fois 10/10 au défi du jour",             "Performance"),
 
-    ("duel_premier",     "Provocateur",         "Terminer un premier duel",                    "Découverte"),
-    ("duel_5_gagnes",    "Duelliste",           "Gagner cinq duels",                           "Performance"),
+    # Codes hérités du duel, conservés tels quels : ils sont stockés en base,
+    # les renommer effacerait les succès déjà obtenus par les joueurs.
+    ("duel_premier",     "Dans la partie",      "Terminer une première partie multi",          "Découverte"),
+    ("duel_5_gagnes",    "Meneur",              "Gagner cinq parties multi",                   "Performance"),
     ("enigme_premiere",  "Petit malin",         "Résoudre une première énigme",                "Découverte"),
     ("enigme_sans_aide", "Sans filet",          "Résoudre une énigme sans aucun indice",       "Performance"),
     ("enigme_10",        "Fin limier",          "Résoudre dix énigmes",                        "Assiduité"),
@@ -69,13 +74,13 @@ def evaluer(user_id: int, pseudo: str = None, contexte: dict = None):
     """
     contexte = contexte or {}
     nouveaux = []
+    conn = None
     try:
         conn = get_connection()
         deja = _debloques(conn, user_id)
 
         u = conn.execute("SELECT pseudo, xp_total, rank_points FROM users WHERE id = ?", (user_id,)).fetchone()
         if not u:
-            conn.close()
             return []
         pseudo = pseudo or u["pseudo"]
 
@@ -108,15 +113,20 @@ def evaluer(user_id: int, pseudo: str = None, contexte: dict = None):
             "SELECT mode, score FROM arcade_records WHERE user_id = ?", (user_id,)
         ).fetchall()}
 
-        # Duels : terminés et gagnés
-        duels_joues = conn.execute(
-            "SELECT COUNT(*) c FROM duel_players WHERE pseudo = ?", (pseudo,)
+        # Multi : parties auxquelles le joueur a réellement répondu, et
+        # parties où personne n'a fait mieux que lui. Le score n'étant stocké
+        # nulle part, on le recalcule ici comme partout ailleurs (somme des
+        # points de ses réponses), ce qui évite un compteur de plus à tenir.
+        multi_jouees = conn.execute(
+            "SELECT COUNT(DISTINCT code) c FROM multi_reponses WHERE pseudo = ?", (pseudo,)
         ).fetchone()["c"]
-        duels_gagnes = conn.execute(
-            "SELECT COUNT(*) c FROM duel_players moi "
-            "WHERE moi.pseudo = ? AND EXISTS ("
-            "  SELECT 1 FROM duel_players autre WHERE autre.code = moi.code "
-            "  AND autre.pseudo <> moi.pseudo AND autre.score < moi.score)",
+        multi_gagnees = conn.execute(
+            "WITH totaux AS ("
+            "  SELECT code, pseudo, SUM(points) AS pts FROM multi_reponses GROUP BY code, pseudo"
+            ") SELECT COUNT(*) c FROM totaux moi "
+            "WHERE moi.pseudo = ? AND NOT EXISTS ("
+            "  SELECT 1 FROM totaux autre WHERE autre.code = moi.code "
+            "  AND autre.pseudo <> moi.pseudo AND autre.pts >= moi.pts)",
             (pseudo,),
         ).fetchone()["c"]
 
@@ -165,8 +175,8 @@ def evaluer(user_id: int, pseudo: str = None, contexte: dict = None):
             "chrono_35":         records.get("chrono", 0) >= 35,
             "daily_parfait_5":   daily_parfaits >= 5,
 
-            "duel_premier":      duels_joues >= 1,
-            "duel_5_gagnes":     duels_gagnes >= 5,
+            "duel_premier":      multi_jouees >= 1,
+            "duel_5_gagnes":     multi_gagnees >= 5,
             "enigme_premiere":   enigmes >= 1,
             "enigme_sans_aide":  enigme_pure >= 1,
             "enigme_10":         enigmes >= 10,
@@ -183,9 +193,16 @@ def evaluer(user_id: int, pseudo: str = None, contexte: dict = None):
                 )
                 nouveaux.append(_PAR_CODE[code])
         conn.commit()
-        conn.close()
     except Exception:
+        # Un succès raté ne doit pas casser une fin de partie — mais la
+        # connexion, elle, doit être rendue : sans le `finally` ci-dessous,
+        # chaque erreur laissait une connexion SQLite ouverte, et le verrou
+        # d'écriture avec elle.
+        logger.exception("Évaluation des succès impossible pour l'utilisateur %s", user_id)
         return []
+    finally:
+        if conn is not None:
+            conn.close()
     return nouveaux
 
 
