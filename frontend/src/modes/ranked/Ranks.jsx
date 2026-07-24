@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Crown, ChevronRight, CalendarClock } from "lucide-react";
-import { iconeDuRang } from "../../design/rankIcons";
 import Avatar from "../../components/Avatar";
 import {
-  cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tint, tierInfo, rankGradient, gradientText,
+  cardWrap, COLORS, FONT_DISPLAY, FONT_BODY, tint, tierInfo, gradientText,
 } from "../../design/theme";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
@@ -30,7 +29,6 @@ function resteCourt(saison) {
 function Marche({ joueur, position, moi, onClick }) {
   if (!joueur) return <div style={{ flex: 1 }} />;
   const t = tierInfo(joueur.rank_tier);
-  const IconeRang = iconeDuRang(t.rankIndex);
   const premier = position === 1;
   const hauteur = premier ? 92 : position === 2 ? 68 : 54;
   const medaille = MEDAILLES[position - 1];
@@ -47,26 +45,16 @@ function Marche({ joueur, position, moi, onClick }) {
         <Crown size={20} color={medaille} style={{ marginBottom: 4, animation: "sqfloaty 3s ease-in-out infinite" }} />
       )}
 
-      {/* Avatar du joueur, cerclé de sa médaille, avec l'icône de son rang en
-          pastille : on identifie la personne ET son niveau d'un coup d'œil. */}
-      <span style={{
-        position: "relative", marginBottom: 8,
-        animation: `sqpop .5s ${position * 0.08}s both`,
-      }}>
-        <Avatar
-          face={joueur.avatar_face} color={joueur.avatar_color}
-          size={premier ? 54 : 46}
-          style={{ boxShadow: `0 0 0 3px ${COLORS.bg}, 0 0 0 5px ${medaille}` }}
-        />
-        <span style={{
-          position: "absolute", right: -4, bottom: -4,
-          width: premier ? 24 : 21, height: premier ? 24 : 21, borderRadius: 8,
-          background: rankGradient(t.rank), boxShadow: `0 0 0 2.5px ${COLORS.bg}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <IconeRang size={premier ? 13 : 11} color="#fff" />
-        </span>
-      </span>
+      {/* Avatar cerclé de sa médaille. Le rang est déjà écrit sous le pseudo :
+          une pastille supplémentaire alourdissait le podium pour rien. */}
+      <Avatar
+        face={joueur.avatar_face} color={joueur.avatar_color}
+        size={premier ? 54 : 46}
+        style={{
+          boxShadow: `0 0 0 3px ${COLORS.bg}, 0 0 0 5px ${medaille}`,
+          marginBottom: 8, animation: `sqpop .5s ${position * 0.08}s both`,
+        }}
+      />
 
       <span style={{
         fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: premier ? 15 : 13.5,
@@ -116,7 +104,6 @@ function Marche({ joueur, position, moi, onClick }) {
 /** Ligne du tableau, de la 4e place à la 10e. */
 function Ligne({ joueur, position, moi, onClick, dernier }) {
   const t = tierInfo(joueur.rank_tier);
-  const IconeRang = iconeDuRang(t.rankIndex);
   return (
     <div
       onClick={onClick}
@@ -134,16 +121,7 @@ function Ligne({ joueur, position, moi, onClick, dernier }) {
       }}>
         {position}
       </span>
-      <span style={{ position: "relative", flexShrink: 0 }}>
-        <Avatar face={joueur.avatar_face} color={joueur.avatar_color} size={34} />
-        <span style={{
-          position: "absolute", right: -3, bottom: -3, width: 17, height: 17, borderRadius: 6,
-          background: rankGradient(t.rank), boxShadow: `0 0 0 2px ${COLORS.bg}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <IconeRang size={9} color="#fff" />
-        </span>
-      </span>
+      <Avatar face={joueur.avatar_face} color={joueur.avatar_color} size={34} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{
           display: "block", fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 15,

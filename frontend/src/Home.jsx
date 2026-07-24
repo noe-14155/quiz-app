@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { ChevronRight, Zap, Coffee, Trophy, Flame, Check } from "lucide-react";
 import {
   COLORS, FONT_DISPLAY, FONT_BODY, cardWrap, gradientFull, gradientTri,
-  gradientText, tint, tierInfo, rankGradient,
+  gradientText, tint, tierInfo,
 } from "./design/theme";
-import { iconeDuRang } from "./design/rankIcons";
 import Avatar from "./components/Avatar";
 import { useAuth } from "./auth/AuthContext";
 import { apiFetch } from "./api/client";
@@ -61,7 +60,6 @@ export default function Home({ onNavigate }) {
   }, [user]);
 
   const t = user ? tierInfo(user.rank_tier) : null;
-  const IconeRang = t ? iconeDuRang(t.rankIndex) : null;
   const serie = defi?.streak?.current || 0;
   const defiFait = !!defi?.already_played;
 
@@ -91,16 +89,7 @@ export default function Home({ onNavigate }) {
             padding: "14px 16px", marginBottom: 16, cursor: "pointer", animation: "sqrise .45s .05s both",
           }}
         >
-          <span style={{ position: "relative", flexShrink: 0 }}>
-            <Avatar face={user.avatar_face} color={user.avatar_color} size={46} />
-            <span style={{
-              position: "absolute", right: -3, bottom: -3, width: 20, height: 20, borderRadius: 7,
-              background: rankGradient(t.rank), boxShadow: `0 0 0 2.5px ${COLORS.card}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <IconeRang size={11} color="#fff" />
-            </span>
-          </span>
+          <Avatar face={user.avatar_face} color={user.avatar_color} size={46} />
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 16, color: COLORS.text }}>

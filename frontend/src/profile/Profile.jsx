@@ -7,6 +7,7 @@ import Avatar, { NB_VISAGES, COULEURS_AVATAR } from "../components/Avatar";
 import { apiFetch } from "../api/client";
 import { FEEDBACK, setFeedback } from "../design/feedback";
 import Button from "../components/Button";
+import Collapsible from "../components/Collapsible";
 import { useAuth } from "../auth/AuthContext";
 
 function xpForLevel(n) {
@@ -188,7 +189,7 @@ export function Profile({ screen, onNavigate }) {
         </Row>
       </Section>
 
-      <Section title="Mon avatar" pad="14px 16px">
+      <Collapsible title="Mon avatar">
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
           <Avatar face={visage} color={couleur} size={54} />
           <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.45, margin: 0 }}>
@@ -234,7 +235,7 @@ export function Profile({ screen, onNavigate }) {
             />
           ))}
         </div>
-      </Section>
+      </Collapsible>
 
       <Section title="Apparence" pad="14px 16px">
         <p style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: 14, color: COLORS.text, margin: "0 0 10px" }}>Thème</p>
